@@ -1,16 +1,36 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { SiteHeader } from '@/components/SiteHeader';
 import { ReviewScreen } from '@/components/ReviewScreen';
+import { JOB_HANDOFF_KEY } from '@/components/LinkForm';
 import { buildSampleJob } from '@/lib/demo/sampleJob';
+import type { ReviewJob } from '@/lib/job/types';
 
-// Server component: runs the real matching engine on a sample source playlist
-// and hands the results to the review UI. Swap buildSampleJob() for a real job
-// lookup once the provider adapters + Inngest wiring exist.
 export default function ReviewPage() {
-  const job = buildSampleJob();
+  const [job, setJob] = useState<ReviewJob | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(JOB_HANDOFF_KEY);
+      setJob(stored ? (JSON.parse(stored) as ReviewJob) : buildSampleJob());
+    } catch {
+      setJob(buildSampleJob());
+    }
+    setReady(true);
+  }, []);
+
   return (
     <>
       <SiteHeader />
-      <ReviewScreen job={job} />
+      {ready && job ? (
+        <ReviewScreen job={job} />
+      ) : (
+        <main className="review wrap">
+          <p className="review-loading">Loading review…</p>
+        </main>
+      )}
     </>
   );
 }

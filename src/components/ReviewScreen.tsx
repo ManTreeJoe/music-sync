@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { MatchResult, Confidence, Track } from '@/lib/providers/types';
-import type { SampleJob } from '@/lib/demo/sampleJob';
+import type { ReviewJob } from '@/lib/job/types';
 import { downloadExport } from '@/lib/exportClient';
 import type { ExportFormat } from '@/lib/export';
 import { PLATFORM_LABEL, msToClock, deepSearchUrl } from '@/lib/format';
@@ -21,7 +21,7 @@ const BADGE: Record<Confidence, string> = {
   none: 'No match',
 };
 
-export function ReviewScreen({ job }: { job: SampleJob }) {
+export function ReviewScreen({ job }: { job: ReviewJob }) {
   // Per-row destination choice — defaults to the engine's pick, overridable
   // from the alternatives list. Keyed by source platformId.
   const [chosen, setChosen] = useState<Record<string, string>>({});

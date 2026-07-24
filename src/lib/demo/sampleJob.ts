@@ -5,7 +5,8 @@
 // This stands in for a live Inngest job until the provider adapters land.
 
 import { matchTrack } from '../matching';
-import type { MatchResult, Platform, Track } from '../providers/types';
+import type { Track } from '../providers/types';
+import type { ReviewJob } from '../job/types';
 
 const src = (t: Partial<Track>): Track => ({
   title: '',
@@ -17,14 +18,8 @@ const src = (t: Partial<Track>): Track => ({
 
 const apple = (t: Partial<Track>): Track => src({ ...t, platform: 'apple' });
 
-export interface SampleJob {
-  name: string;
-  sourcePlatform: Platform;
-  destinationPlatform: Platform;
-  sourceUrl: string;
-  results: MatchResult[];
-  skipped: { local: number; episodes: number; unavailable: number };
-}
+/** The sample renders the same shape a real job does. */
+export type SampleJob = ReviewJob;
 
 interface Case {
   source: Track;

@@ -452,6 +452,17 @@ button {
   color: var(--void);
 }
 
+.form-error {
+  margin-top: 0.9rem;
+  color: var(--red);
+  font-size: var(--t-sm);
+}
+
+.review-loading {
+  color: var(--paper-dim);
+  padding-block: 2.5rem;
+}
+
 /* ---- electric-blue color-block band ---------------------------------- */
 
 .band-blue {
@@ -846,6 +857,19 @@ main.review {
   }
   .tiers {
     grid-template-columns: 1fr;
+  }
+  /* The signal chain can't fit four nodes on a phone — let it scroll inside its
+     own box instead of pushing the page sideways. */
+  .chain {
+    overflow-x: auto;
+    justify-content: flex-start;
+    scrollbar-width: none;
+  }
+  .chain::-webkit-scrollbar {
+    display: none;
+  }
+  .node {
+    min-width: 76px;
   }
   .row {
     grid-template-columns: 1fr;
