@@ -14,28 +14,53 @@ export interface ReviewJob {
   skipped: { local: number; episodes: number; unavailable: number };
 }
 
-/** Lifecycle of a background match job (the write step has its own path). */
-export type JobStatus = 'pending' | 'matching' | 'awaiting_review' | 'failed';
+/** A job is either a match (read + resolve) or a write (create/append). */
+export type JobKind = 'match' | 'write';
 
-/** Hot progress counter, updated per track as matching runs. */
+/**
+ * Lifecycle across both kinds. Match: pending → matching → awaiting_review.
+ * Write: pending → writing → complete. Either can end in failed.
+ * `awaiting_review` and `complete` are both terminal-success states.
+ */
+export type JobStatus =
+  | 'pending'
+  | 'matching'
+  | 'awaiting_review'
+  | 'writing'
+  | 'complete'
+  | 'failed';
+
+/** Hot progress counter, updated per track/batch as the job runs. */
 export interface JobProgress {
   done: number;
   total: number;
 }
 
+/** The stored result of a write job — mirrors runWrite's WriteResult. */
+export interface WriteSummary {
+  playlistId: string;
+  playlistUrl: string;
+  added: number;
+  skippedDupes: number;
+  unmatched: number;
+}
+
 /**
- * The durable record for a background match job, stored in Redis. It carries
- * enough to reconstruct the review screen once matching finishes, plus the
- * progress the client streams while it runs.
+ * The durable record for a background job, stored in Redis. It carries enough
+ * to render the result once the job finishes, plus the progress the client
+ * streams while it runs. Only one of `review` / `writeResult` is set, per kind.
  */
 export interface JobRecord {
   id: string;
+  kind: JobKind;
   status: JobStatus;
   destination: Platform;
   url: string;
   progress: JobProgress;
-  /** Present once status === 'awaiting_review'. */
+  /** Present once a match reaches awaiting_review. */
   review?: ReviewJob;
+  /** Present once a write reaches complete. */
+  writeResult?: WriteSummary;
   /** Present once status === 'failed'. */
   error?: { code: JobErrorCode; message: string };
   createdAt: number;

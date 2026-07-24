@@ -203,9 +203,15 @@ export class YouTubeProvider implements MusicProvider {
   }
 
   /** One insert per track — no batch endpoint. This is the quota killer. */
-  async addTracks(playlistId: string, trackIds: string[], auth: Auth): Promise<void> {
+  async addTracks(
+    playlistId: string,
+    trackIds: string[],
+    auth: Auth,
+    onProgress?: (added: number) => void,
+  ): Promise<void> {
     this.requireWriteEnabled();
     if (auth.kind !== 'bearer') throw new Error('AUTH_REQUIRED: YouTube writes need OAuth');
+    let done = 0;
     for (const videoId of trackIds) {
       await httpJson(`${API}/playlistItems?part=snippet`, {
         method: 'POST',
@@ -213,6 +219,7 @@ export class YouTubeProvider implements MusicProvider {
         body: JSON.stringify({ snippet: { playlistId, resourceId: { kind: 'youtube#video', videoId } } }),
         fetchImpl: this.fetchImpl,
       });
+      onProgress?.(++done);
     }
   }
 

@@ -40,6 +40,8 @@ export interface RunWriteDeps {
   canAfford?: (units: number) => Promise<boolean> | boolean;
   charge?: (units: number) => Promise<void> | void;
   quotaResetHint?: string;
+  /** Streamed as batches land: (added-so-far, total-to-add). */
+  onProgress?: (added: number, total: number) => void;
 }
 
 function playlistUrlFor(platform: Platform, id: string): string {
@@ -103,8 +105,15 @@ export async function runWrite(input: WriteInput, deps: RunWriteDeps): Promise<W
       playlistUrl = created.url;
     }
 
-    if (incoming.length > 0) {
-      await provider.addTracks(targetId!, incoming.map((t) => t.platformId), deps.auth);
+    const total = incoming.length;
+    deps.onProgress?.(0, total);
+    if (total > 0) {
+      await provider.addTracks(
+        targetId!,
+        incoming.map((t) => t.platformId),
+        deps.auth,
+        (added) => deps.onProgress?.(added, total),
+      );
     }
 
     if (input.destination === 'youtube' && deps.charge) {

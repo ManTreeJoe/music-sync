@@ -81,7 +81,7 @@ const deps = {
 describe('executeMatchJob', () => {
   it('drives a job to awaiting_review with the resolved matches', async () => {
     const id = newJobId();
-    await createJob({ id, url: 'https://src/PL', destination: 'apple', total: 0 });
+    await createJob({ id, kind: 'match', url: 'https://src/PL', destination: 'apple', total: 0 });
     await executeMatchJob({ id, url: 'https://src/PL', destination: 'apple', deps });
 
     const job = await getJob(id);
@@ -93,7 +93,7 @@ describe('executeMatchJob', () => {
 
   it('records a failure on the job record rather than throwing', async () => {
     const id = newJobId();
-    await createJob({ id, url: 'nope', destination: 'apple', total: 0 });
+    await createJob({ id, kind: 'match', url: 'nope', destination: 'apple', total: 0 });
     await executeMatchJob({
       id,
       url: 'nope',

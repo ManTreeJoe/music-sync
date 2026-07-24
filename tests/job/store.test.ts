@@ -38,7 +38,7 @@ describe('job store', () => {
 
   it('creates a pending job and reads it back', async () => {
     const id = newJobId();
-    await createJob({ id, url: 'https://src/PL', destination: 'apple', total: 0 });
+    await createJob({ id, kind: 'match', url: 'https://src/PL', destination: 'apple', total: 0 });
     const job = await getJob(id);
     expect(job?.status).toBe('pending');
     expect(job?.destination).toBe('apple');
@@ -47,7 +47,7 @@ describe('job store', () => {
 
   it('progress uses the hot counter, not the stale record copy', async () => {
     const id = newJobId();
-    await createJob({ id, url: 'u', destination: 'apple', total: 10 });
+    await createJob({ id, kind: 'match', url: 'u', destination: 'apple', total: 10 });
     await setProgress(id, 4, 10);
     expect(await getProgress(id)).toEqual({ done: 4, total: 10 });
     // getJob overlays the live counter onto the record.
@@ -56,7 +56,7 @@ describe('job store', () => {
 
   it('completeJob makes the review available and fills progress', async () => {
     const id = newJobId();
-    await createJob({ id, url: 'u', destination: 'apple', total: 0 });
+    await createJob({ id, kind: 'match', url: 'u', destination: 'apple', total: 0 });
     await setStatus(id, 'matching');
     await completeJob(id, review(3));
     const job = await getJob(id);
@@ -67,7 +67,7 @@ describe('job store', () => {
 
   it('failJob records the error code and message', async () => {
     const id = newJobId();
-    await createJob({ id, url: 'u', destination: 'apple', total: 0 });
+    await createJob({ id, kind: 'match', url: 'u', destination: 'apple', total: 0 });
     await failJob(id, { code: 'PLAYLIST_NOT_FOUND', message: 'gone' });
     const job = await getJob(id);
     expect(job?.status).toBe('failed');

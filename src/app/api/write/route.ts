@@ -1,11 +1,25 @@
 // app/api/write/route.ts
 //
-// Create/append the matched tracks onto the destination.
+// Kick off a background write: create/append the matched tracks onto the
+// destination. Returns a job id immediately; the client streams progress from
+// /api/jobs/{id}/stream (the same machinery as matching) and reads the result
+// from /api/jobs/{id}.
+//
+// A write always needs the destination user token, so it runs in-process via
+// after() — never on Inngest (tokens must not enter an event payload). Auth is
+// resolved here, before the job is created, so a missing connection fails fast
+// with 401 rather than as a background job failure.
+//
+// Idempotency: the client's stable key maps to a job id. A repeat with the same
+// key joins the existing job (so a double-click never creates two playlists);
+// if that job failed, the mapping is cleared so a genuine retry starts fresh.
 
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { getSession } from '@/lib/session';
 import { destAuthFor } from '@/lib/auth/sessionAuth';
-import { runWrite, type WriteResult, type WriteTrackRef } from '@/lib/job/write';
+import { type WriteTrackRef } from '@/lib/job/write';
+import { executeWriteJob } from '@/lib/job/executeWrite';
+import { createJob, newJobId, getJob } from '@/lib/job/store';
 import { JobError, type JobErrorCode } from '@/lib/job/types';
 import { canAfford, charge } from '@/lib/quota';
 import { redis } from '@/lib/redis';
@@ -83,29 +97,43 @@ export async function POST(req: Request) {
     );
   }
 
-  // Idempotency: a retry with the same key replays the stored result instead of
-  // creating a second playlist. (Best-effort without a strict lock; the client
-  // also disables the button while writing.)
+  // Idempotency: same key → same job. Join an in-flight/finished one; only a
+  // failed prior attempt is cleared so a retry can start over.
   const idem = typeof body.idempotencyKey === 'string' ? body.idempotencyKey : null;
   if (idem) {
-    const prior = await redis.get<WriteResult>(`idem:${idem}`);
-    if (prior) return NextResponse.json(prior);
-    const lock = await redis.set(`idem:${idem}:lock`, '1', { nx: true, ex: 120 });
-    if (!lock) {
-      return NextResponse.json(
-        { error: { code: 'DEST_NOT_WRITABLE', message: 'That write is already in progress.' } },
-        { status: 409 },
-      );
+    const priorId = await redis.get<string>(`idem:${idem}`);
+    if (priorId) {
+      const prior = await getJob(priorId);
+      if (prior && prior.status !== 'failed') {
+        return NextResponse.json({ jobId: priorId }, { status: 202 });
+      }
+      await redis.del(`idem:${idem}`); // failed/expired — allow a fresh attempt
     }
   }
 
+  // Resolve the destination token now so a missing connection fails fast (401),
+  // not as a background job failure. Tokens stay in-process.
+  let auth;
   try {
     const session = await getSession();
-    const auth = await destAuthFor(dest, session);
+    auth = await destAuthFor(dest, session);
     await session.save(); // persist a refreshed token
+  } catch (e) {
+    const err = e instanceof JobError ? e : new JobError('PLATFORM_ERROR', 'Unexpected error.');
+    return NextResponse.json(
+      { error: { code: err.code, message: err.message } },
+      { status: STATUS[err.code] },
+    );
+  }
 
-    const result = await runWrite(
-      {
+  const id = newJobId();
+  await createJob({ id, kind: 'write', url: '', destination: dest, total: tracks.length });
+  if (idem) await redis.set(`idem:${idem}`, id, { ex: 600 });
+
+  after(() =>
+    executeWriteJob({
+      id,
+      input: {
         destination: dest,
         mode,
         playlistId: typeof body.playlistId === 'string' ? body.playlistId : undefined,
@@ -113,23 +141,14 @@ export async function POST(req: Request) {
         tracks,
         unmatchedCount: typeof body.unmatchedCount === 'number' ? body.unmatchedCount : 0,
       },
-      {
+      deps: {
         auth,
         canAfford: dest === 'youtube' ? (u) => canAfford(u) : undefined,
         charge: dest === 'youtube' ? (u) => charge(u) : undefined,
         quotaResetHint: 'at midnight Pacific',
       },
-    );
-    if (idem) await redis.set(`idem:${idem}`, result, { ex: 600 });
-    return NextResponse.json(result);
-  } catch (e) {
-    // A failed write must not block a retry — release the in-progress lock so the
-    // same key can be used again. (The stored result is only set on success.)
-    if (idem) await redis.del(`idem:${idem}:lock`);
-    const err = e instanceof JobError ? e : new JobError('PLATFORM_ERROR', 'Unexpected error.');
-    return NextResponse.json(
-      { error: { code: err.code, message: err.message } },
-      { status: STATUS[err.code] },
-    );
-  }
+    }),
+  );
+
+  return NextResponse.json({ jobId: id }, { status: 202 });
 }

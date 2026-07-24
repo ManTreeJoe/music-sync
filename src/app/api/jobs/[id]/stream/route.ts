@@ -54,7 +54,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           send(sseEvent('progress', { done: job.progress.done, total: job.progress.total }));
         }
 
-        if (job.status === 'awaiting_review') {
+        // Both terminal-success states: a match ready to review, or a write
+        // that finished. The client fetches the record and reads the right field.
+        if (job.status === 'awaiting_review' || job.status === 'complete') {
           send(sseEvent('done', { jobId: id }));
           break;
         }

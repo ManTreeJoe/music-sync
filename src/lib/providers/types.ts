@@ -71,8 +71,15 @@ export interface MusicProvider {
 
   createPlaylist(name: string, desc: string, auth: Auth): Promise<Playlist>;
 
-  /** Must batch internally per platform limits. */
-  addTracks(playlistId: string, trackIds: string[], auth: Auth): Promise<void>;
+  /** Must batch internally per platform limits. `onProgress` (optional) is
+   *  called after each batch with the cumulative count added so far, so a
+   *  background write can stream progress. */
+  addTracks(
+    playlistId: string,
+    trackIds: string[],
+    auth: Auth,
+    onProgress?: (added: number) => void,
+  ): Promise<void>;
 
   /** For append-mode dedup and the write-permission check. */
   getWritablePlaylists(auth: Auth): Promise<Playlist[]>;

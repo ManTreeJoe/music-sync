@@ -227,15 +227,22 @@ export class AppleProvider implements MusicProvider {
   }
 
   /** trackIds are CATALOG ids. Added with type 'songs', batched at 25. */
-  async addTracks(playlistId: string, trackIds: string[], auth: Auth): Promise<void> {
+  async addTracks(
+    playlistId: string,
+    trackIds: string[],
+    auth: Auth,
+    onProgress?: (added: number) => void,
+  ): Promise<void> {
     for (let i = 0; i < trackIds.length; i += 25) {
-      const data = trackIds.slice(i, i + 25).map((id) => ({ id, type: 'songs' }));
+      const slice = trackIds.slice(i, i + 25);
+      const data = slice.map((id) => ({ id, type: 'songs' }));
       await httpJson(`${API}/me/library/playlists/${playlistId}/tracks`, {
         method: 'POST',
         headers: { ...this.headers(auth, true), 'Content-Type': 'application/json' },
         body: JSON.stringify({ data }),
         fetchImpl: this.fetchImpl,
       });
+      onProgress?.(Math.min(i + slice.length, trackIds.length));
     }
   }
 

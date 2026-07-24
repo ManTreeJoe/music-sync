@@ -14,10 +14,12 @@
 import { redis } from '../redis';
 import type {
   JobErrorCode,
+  JobKind,
   JobProgress,
   JobRecord,
   JobStatus,
   ReviewJob,
+  WriteSummary,
 } from './types';
 import type { Platform } from '../providers/types';
 
@@ -33,12 +35,14 @@ export function newJobId(): string {
 
 export async function createJob(input: {
   id: string;
+  kind: JobKind;
   url: string;
   destination: Platform;
   total: number;
 }): Promise<JobRecord> {
   const record: JobRecord = {
     id: input.id,
+    kind: input.kind,
     status: 'pending',
     destination: input.destination,
     url: input.url,
@@ -85,6 +89,15 @@ export async function completeJob(id: string, review: ReviewJob): Promise<void> 
     status: 'awaiting_review',
     review,
     progress: { done: review.results.length, total: review.results.length },
+  });
+}
+
+export async function completeWriteJob(id: string, writeResult: WriteSummary): Promise<void> {
+  await setProgress(id, writeResult.added, writeResult.added);
+  await patch(id, {
+    status: 'complete',
+    writeResult,
+    progress: { done: writeResult.added, total: writeResult.added },
   });
 }
 

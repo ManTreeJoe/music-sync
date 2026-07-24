@@ -774,6 +774,23 @@ main.review {
 .wp-done-line b {
   color: var(--gold);
 }
+.wp-writing {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.wp-writing-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: var(--t-md);
+}
+.wp-writing-label {
+  font-size: var(--t-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
 .skip-note .mono {
   color: var(--paper);
 }

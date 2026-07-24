@@ -179,7 +179,12 @@ export class SpotifyProvider implements MusicProvider {
   }
 
   /** trackIds are Spotify URIs. Batched at 100/request per the API limit. */
-  async addTracks(playlistId: string, trackIds: string[], auth: Auth): Promise<void> {
+  async addTracks(
+    playlistId: string,
+    trackIds: string[],
+    auth: Auth,
+    onProgress?: (added: number) => void,
+  ): Promise<void> {
     const token = await this.bearer(auth);
     for (let i = 0; i < trackIds.length; i += 100) {
       const uris = trackIds.slice(i, i + 100);
@@ -190,6 +195,7 @@ export class SpotifyProvider implements MusicProvider {
         body: JSON.stringify({ uris }),
         fetchImpl: this.fetchImpl,
       });
+      onProgress?.(Math.min(i + uris.length, trackIds.length));
     }
   }
 

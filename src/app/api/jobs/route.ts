@@ -115,7 +115,7 @@ export async function POST(req: Request) {
   const sourceIsPublic = sourceAuthFor(sourcePlatform).kind === 'none';
 
   const id = newJobId();
-  await createJob({ id, url, destination: dest, total: 0 });
+  await createJob({ id, kind: 'match', url, destination: dest, total: 0 });
 
   if (inngestEnabled && sourceIsPublic) {
     await inngest.send({ name: EVENTS.matchRequested, data: { jobId: id, url, destination: dest } });

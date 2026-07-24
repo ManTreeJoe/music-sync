@@ -22,8 +22,8 @@ function ReviewBody() {
 function StreamedReview({ jobId }: { jobId: string }) {
   const state = useJobStream(jobId);
 
-  if (state.phase === 'ready') {
-    return <ReviewScreen job={state.job} />;
+  if (state.phase === 'ready' && state.record.review) {
+    return <ReviewScreen job={state.record.review} />;
   }
   if (state.phase === 'error') {
     return (
