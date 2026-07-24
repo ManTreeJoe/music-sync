@@ -1,9 +1,10 @@
 {
-  "note": "Hand-verified matching fixtures. Each case injects the candidate lists a provider WOULD have returned, so the engine is exercised with zero network. Build/extend this before tuning thresholds — otherwise you tune to your own music taste.",
+  "note": "Hand-verified matching fixtures. Each case injects the candidate lists a provider WOULD have returned, so the engine is exercised with zero network. Build/extend this before tuning thresholds — otherwise you tune to your own music taste. Every case carries a `category` for the per-category accuracy report (npm run test:matching:report). The 10 required hard cases carry `hardCase`; case 10 (local-file skip) is a read-layer concern and lives in tests/matching/spotifyItems.test.ts.",
   "cases": [
     {
       "id": "classical-performer-ambiguity",
       "hardCase": 1,
+      "category": "classical",
       "note": "Composer in the title/artist field, performer alongside. ISRC makes it unambiguous — Tier 1.",
       "destinationPlatform": "apple",
       "source": {
@@ -29,6 +30,7 @@
     {
       "id": "live-must-not-match-studio",
       "hardCase": 2,
+      "category": "live-reject",
       "note": "Only a live version is available. It must be rejected, not matched — a wrong track is worse than a missing one.",
       "destinationPlatform": "apple",
       "source": {
@@ -52,6 +54,7 @@
     {
       "id": "remaster-matches-original",
       "hardCase": 3,
+      "category": "isrc-remaster",
       "note": "The remaster shares an ISRC with its catalog entry on the other platform — Tier 1 high. Remaster-title stripping itself is covered in normalize.test.ts.",
       "destinationPlatform": "apple",
       "source": {
@@ -77,6 +80,7 @@
     {
       "id": "featured-artist-formatted-differently",
       "hardCase": 4,
+      "category": "featured",
       "note": "Source has '(feat. X)' in the title; candidate has X in the artists array and a clean title. Tier 2 fuzzy should still match high.",
       "destinationPlatform": "apple",
       "source": {
@@ -100,6 +104,7 @@
     {
       "id": "absent-from-catalog",
       "hardCase": 5,
+      "category": "absent",
       "note": "Track exists on the source but not the destination catalog. Must return unmatched, never a wrong match.",
       "destinationPlatform": "apple",
       "source": {
@@ -115,6 +120,7 @@
     {
       "id": "messy-youtube-title",
       "hardCase": 6,
+      "category": "youtube-title",
       "note": "Source came from YouTube with a noisy title. Noise-stripping should recover the match; ceiling is 'medium' because YouTube has no ISRC.",
       "destinationPlatform": "apple",
       "source": {
@@ -138,6 +144,7 @@
     {
       "id": "non-latin-script",
       "hardCase": 7,
+      "category": "non-latin",
       "note": "Hangul title. Catches ASCII-stripping bugs — if normalization drops non-Latin characters the title becomes empty and nothing matches.",
       "destinationPlatform": "apple",
       "source": {
@@ -168,6 +175,7 @@
     {
       "id": "karaoke-trap",
       "hardCase": 8,
+      "category": "karaoke",
       "note": "A 'Made Famous By' karaoke result is listed first. It must be filtered out so the real track wins, even though its title similarity is high.",
       "destinationPlatform": "apple",
       "source": {
@@ -204,6 +212,7 @@
     {
       "id": "same-title-different-artists",
       "hardCase": 9,
+      "category": "ambiguous-artist",
       "note": "Multiple songs called 'Alive'. Artist and duration must disambiguate; the wrong artist's version must not be chosen.",
       "destinationPlatform": "apple",
       "source": {
@@ -236,6 +245,1019 @@
         "minScore": 0.9,
         "destinationPlatformId": "apple:alive-sia"
       }
+    },
+
+    {
+      "id": "isrc-exact-simple",
+      "category": "isrc-exact",
+      "note": "Plain ISRC hit, single candidate. Tier 1 high.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Mr. Brightside",
+        "artists": ["The Killers"],
+        "isrc": "USIR20400274",
+        "durationMs": 222000,
+        "platformId": "spotify:track:brightside"
+      },
+      "isrcCandidates": [
+        {
+          "platform": "apple",
+          "title": "Mr. Brightside",
+          "artists": ["The Killers"],
+          "isrc": "USIR20400274",
+          "durationMs": 222600,
+          "platformId": "apple:brightside"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "high", "tier": 1 }
+    },
+    {
+      "id": "isrc-exact-apple-to-spotify",
+      "category": "isrc-exact",
+      "note": "Reverse direction: Apple source, Spotify destination. ISRC still authoritative.",
+      "destinationPlatform": "spotify",
+      "source": {
+        "platform": "apple",
+        "title": "Blinding Lights",
+        "artists": ["The Weeknd"],
+        "isrc": "USUG11904206",
+        "durationMs": 200000,
+        "platformId": "apple:blindinglights"
+      },
+      "isrcCandidates": [
+        {
+          "platform": "spotify",
+          "title": "Blinding Lights",
+          "artists": ["The Weeknd"],
+          "isrc": "USUG11904206",
+          "durationMs": 200040,
+          "platformId": "spotify:track:blindinglights"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "high", "tier": 1 }
+    },
+    {
+      "id": "isrc-exact-punctuation-title",
+      "category": "isrc-exact",
+      "note": "Punctuation-heavy title; ISRC bypasses title normalization entirely.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "WAP (feat. Megan Thee Stallion)",
+        "artists": ["Cardi B", "Megan Thee Stallion"],
+        "isrc": "USSM12005111",
+        "durationMs": 187000,
+        "platformId": "spotify:track:wap"
+      },
+      "isrcCandidates": [
+        {
+          "platform": "apple",
+          "title": "WAP (feat. Megan Thee Stallion)",
+          "artists": ["Cardi B", "Megan Thee Stallion"],
+          "isrc": "USSM12005111",
+          "durationMs": 187200,
+          "platformId": "apple:wap"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "high", "tier": 1 }
+    },
+    {
+      "id": "isrc-exact-collab",
+      "category": "isrc-exact",
+      "note": "Two-artist collaboration; ISRC hit regardless of artist ordering.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Sunflower",
+        "artists": ["Post Malone", "Swae Lee"],
+        "isrc": "USUM71814888",
+        "durationMs": 158000,
+        "platformId": "spotify:track:sunflower"
+      },
+      "isrcCandidates": [
+        {
+          "platform": "apple",
+          "title": "Sunflower (Spider-Man: Into the Spider-Verse)",
+          "artists": ["Post Malone", "Swae Lee"],
+          "isrc": "USUM71814888",
+          "durationMs": 158000,
+          "platformId": "apple:sunflower"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "high", "tier": 1 }
+    },
+    {
+      "id": "isrc-multi-duration",
+      "category": "isrc-multi",
+      "note": "Two ISRC hits (e.g. album + single). Prefer the closest duration match.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Dreams",
+        "artists": ["Fleetwood Mac"],
+        "isrc": "USEE10001976",
+        "durationMs": 257000,
+        "platformId": "spotify:track:dreams"
+      },
+      "isrcCandidates": [
+        {
+          "platform": "apple",
+          "title": "Dreams (Single Edit)",
+          "artists": ["Fleetwood Mac"],
+          "isrc": "USEE10001976",
+          "durationMs": 240000,
+          "platformId": "apple:dreams-single"
+        },
+        {
+          "platform": "apple",
+          "title": "Dreams",
+          "artists": ["Fleetwood Mac"],
+          "isrc": "USEE10001976",
+          "durationMs": 257300,
+          "platformId": "apple:dreams-album"
+        }
+      ],
+      "expect": {
+        "matched": true,
+        "confidence": "high",
+        "tier": 1,
+        "destinationPlatformId": "apple:dreams-album"
+      }
+    },
+    {
+      "id": "isrc-multi-three-pick-exact",
+      "category": "isrc-multi",
+      "note": "Three regional editions share the ISRC; the exact-duration one wins.",
+      "destinationPlatform": "spotify",
+      "source": {
+        "platform": "apple",
+        "title": "Africa",
+        "artists": ["TOTO"],
+        "isrc": "USSM17900934",
+        "durationMs": 295000,
+        "platformId": "apple:africa"
+      },
+      "isrcCandidates": [
+        {
+          "platform": "spotify",
+          "title": "Africa",
+          "artists": ["TOTO"],
+          "isrc": "USSM17900934",
+          "durationMs": 310000,
+          "platformId": "spotify:track:africa-a"
+        },
+        {
+          "platform": "spotify",
+          "title": "Africa",
+          "artists": ["TOTO"],
+          "isrc": "USSM17900934",
+          "durationMs": 295000,
+          "platformId": "spotify:track:africa-b"
+        },
+        {
+          "platform": "spotify",
+          "title": "Africa",
+          "artists": ["TOTO"],
+          "isrc": "USSM17900934",
+          "durationMs": 280000,
+          "platformId": "spotify:track:africa-c"
+        }
+      ],
+      "expect": {
+        "matched": true,
+        "confidence": "high",
+        "tier": 1,
+        "destinationPlatformId": "spotify:track:africa-b"
+      }
+    },
+    {
+      "id": "isrc-regional-edition",
+      "category": "isrc-regional",
+      "note": "A regional edition with a slightly different title but the same ISRC. Tier 1.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Gangnam Style",
+        "artists": ["PSY"],
+        "isrc": "KRA381200070",
+        "durationMs": 219000,
+        "platformId": "spotify:track:gangnam"
+      },
+      "isrcCandidates": [
+        {
+          "platform": "apple",
+          "title": "Gangnam Style (강남스타일)",
+          "artists": ["PSY"],
+          "isrc": "KRA381200070",
+          "durationMs": 219000,
+          "platformId": "apple:gangnam"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "high", "tier": 1 }
+    },
+    {
+      "id": "isrc-remaster-mono",
+      "category": "isrc-remaster",
+      "note": "A remaster with a divergent title still matches its counterpart by ISRC.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Here Comes the Sun - Remastered 2009",
+        "artists": ["The Beatles"],
+        "isrc": "GBAYE0601697",
+        "durationMs": 185000,
+        "platformId": "spotify:track:herecomesthesun"
+      },
+      "isrcCandidates": [
+        {
+          "platform": "apple",
+          "title": "Here Comes the Sun (2009 Remaster)",
+          "artists": ["The Beatles"],
+          "isrc": "GBAYE0601697",
+          "durationMs": 185700,
+          "platformId": "apple:herecomesthesun"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "high", "tier": 1 }
+    },
+    {
+      "id": "isrc-classical-performer-2",
+      "category": "classical",
+      "note": "Another performer-vs-composer case, disambiguated by ISRC.",
+      "destinationPlatform": "spotify",
+      "source": {
+        "platform": "apple",
+        "title": "The Four Seasons, Violin Concerto No. 1 in E Major, RV 269 \"Spring\": I. Allegro",
+        "artists": ["Antonio Vivaldi", "Itzhak Perlman"],
+        "isrc": "USSM17600321",
+        "durationMs": 199000,
+        "platformId": "apple:spring"
+      },
+      "isrcCandidates": [
+        {
+          "platform": "spotify",
+          "title": "The Four Seasons, Violin Concerto in E Major, RV 269 \"Spring\": I. Allegro",
+          "artists": ["Antonio Vivaldi", "Itzhak Perlman"],
+          "isrc": "USSM17600321",
+          "durationMs": 199500,
+          "platformId": "spotify:track:spring"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "high", "tier": 1 }
+    },
+    {
+      "id": "clean-simple",
+      "category": "clean-fuzzy",
+      "note": "Identical title, artist, and duration — the baseline Tier 2 auto-accept.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Riptide",
+        "artists": ["Vance Joy"],
+        "durationMs": 204000,
+        "platformId": "spotify:track:riptide"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Riptide",
+          "artists": ["Vance Joy"],
+          "durationMs": 204000,
+          "platformId": "apple:riptide"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.95 }
+    },
+    {
+      "id": "clean-apple-to-spotify",
+      "category": "clean-fuzzy",
+      "note": "Reverse direction, no ISRC. Clean fuzzy auto-accept.",
+      "destinationPlatform": "spotify",
+      "source": {
+        "platform": "apple",
+        "title": "Take On Me",
+        "artists": ["a-ha"],
+        "durationMs": 225000,
+        "platformId": "apple:takeonme"
+      },
+      "searchCandidates": [
+        {
+          "platform": "spotify",
+          "title": "Take On Me",
+          "artists": ["a-ha"],
+          "durationMs": 225000,
+          "platformId": "spotify:track:takeonme"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.95 }
+    },
+    {
+      "id": "clean-into-youtube",
+      "category": "clean-fuzzy",
+      "note": "Destination is YouTube: a clean fuzzy match is fine, but confidence must never exceed 'medium'.",
+      "destinationPlatform": "youtube",
+      "source": {
+        "platform": "spotify",
+        "title": "Dance Monkey",
+        "artists": ["Tones and I"],
+        "durationMs": 209000,
+        "platformId": "spotify:track:dancemonkey"
+      },
+      "searchCandidates": [
+        {
+          "platform": "youtube",
+          "title": "Dance Monkey",
+          "artists": ["Tones and I"],
+          "durationMs": 209000,
+          "platformId": "yt:dancemonkey"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.9 }
+    },
+    {
+      "id": "clean-ampersand-artist",
+      "category": "clean-fuzzy",
+      "note": "Ampersand in the artist name is preserved by normalization.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "The Sound of Silence",
+        "artists": ["Simon & Garfunkel"],
+        "durationMs": 185000,
+        "platformId": "spotify:track:silence"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "The Sound of Silence",
+          "artists": ["Simon & Garfunkel"],
+          "durationMs": 185000,
+          "platformId": "apple:silence"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.95 }
+    },
+    {
+      "id": "clean-the-prefix-artist",
+      "category": "clean-fuzzy",
+      "note": "'The Beatles' vs 'Beatles' — the leading 'the' is stripped so artists still agree.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Come Together",
+        "artists": ["The Beatles"],
+        "durationMs": 259000,
+        "platformId": "spotify:track:cometogether"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Come Together",
+          "artists": ["Beatles"],
+          "durationMs": 259000,
+          "platformId": "apple:cometogether"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.95 }
+    },
+    {
+      "id": "clean-small-duration-diff",
+      "category": "clean-fuzzy",
+      "note": "A 4-second duration difference still clears auto-accept.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Viva La Vida",
+        "artists": ["Coldplay"],
+        "durationMs": 242000,
+        "platformId": "spotify:track:vivalavida"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Viva La Vida",
+          "artists": ["Coldplay"],
+          "durationMs": 246000,
+          "platformId": "apple:vivalavida"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.9 }
+    },
+    {
+      "id": "feat-ft-abbreviation",
+      "category": "featured",
+      "note": "'ft.' abbreviation in the source title; candidate is clean with the guest in the array.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Stay ft. Justin Bieber",
+        "artists": ["The Kid LAROI", "Justin Bieber"],
+        "durationMs": 141000,
+        "platformId": "spotify:track:stay"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Stay",
+          "artists": ["The Kid LAROI", "Justin Bieber"],
+          "durationMs": 141000,
+          "platformId": "apple:stay"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.9 }
+    },
+    {
+      "id": "feat-with-keyword",
+      "category": "featured",
+      "note": "'with' as the collaboration keyword; still stripped and matched.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Under Pressure (with David Bowie)",
+        "artists": ["Queen", "David Bowie"],
+        "durationMs": 248000,
+        "platformId": "spotify:track:underpressure"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Under Pressure",
+          "artists": ["Queen", "David Bowie"],
+          "durationMs": 248000,
+          "platformId": "apple:underpressure"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.9 }
+    },
+    {
+      "id": "noise-remaster-title-no-isrc",
+      "category": "noise-strip",
+      "note": "No ISRC available, but stripping the remaster suffix recovers a clean Tier 2 match.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Wish You Were Here - Remastered",
+        "artists": ["Pink Floyd"],
+        "durationMs": 334000,
+        "platformId": "spotify:track:wishyou"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Wish You Were Here",
+          "artists": ["Pink Floyd"],
+          "durationMs": 334000,
+          "platformId": "apple:wishyou"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.9 }
+    },
+    {
+      "id": "noise-deluxe-suffix",
+      "category": "noise-strip",
+      "note": "A '(Deluxe Edition)' suffix is stripped before scoring.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Happier Than Ever (Deluxe Edition)",
+        "artists": ["Billie Eilish"],
+        "durationMs": 298000,
+        "platformId": "spotify:track:happier"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Happier Than Ever",
+          "artists": ["Billie Eilish"],
+          "durationMs": 298000,
+          "platformId": "apple:happier"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.9 }
+    },
+    {
+      "id": "noise-official-video-pipe",
+      "category": "noise-strip",
+      "note": "YouTube-style '| Official Music Video' tail is stripped; ceiling stays medium (YouTube source).",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "youtube",
+        "title": "Shape of You | Official Music Video",
+        "artists": ["Ed Sheeran"],
+        "durationMs": 234000,
+        "platformId": "yt:shapeofyou"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Shape of You",
+          "artists": ["Ed Sheeran"],
+          "durationMs": 234000,
+          "platformId": "apple:shapeofyou"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.9 }
+    },
+    {
+      "id": "non-latin-cyrillic",
+      "category": "non-latin",
+      "note": "Cyrillic title and artist round-trip through NFC recomposition.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Кукушка",
+        "artists": ["Кино"],
+        "durationMs": 366000,
+        "platformId": "spotify:track:kukushka"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Кукушка",
+          "artists": ["Кино"],
+          "durationMs": 366000,
+          "platformId": "apple:kukushka"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.9 }
+    },
+    {
+      "id": "non-latin-japanese",
+      "category": "non-latin",
+      "note": "Japanese title with mixed kanji/kana.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "残酷な天使のテーゼ",
+        "artists": ["高橋洋子"],
+        "durationMs": 245000,
+        "platformId": "spotify:track:zankoku"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "残酷な天使のテーゼ",
+          "artists": ["高橋洋子"],
+          "durationMs": 245000,
+          "platformId": "apple:zankoku"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.9 }
+    },
+    {
+      "id": "diacritics-title",
+      "category": "diacritics",
+      "note": "Accented Latin title vs its stripped form still match.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Déjà Vu",
+        "artists": ["Olivia Rodrigo"],
+        "durationMs": 215000,
+        "platformId": "spotify:track:dejavu"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Deja Vu",
+          "artists": ["Olivia Rodrigo"],
+          "durationMs": 215000,
+          "platformId": "apple:dejavu"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.95 }
+    },
+    {
+      "id": "diacritics-artist",
+      "category": "diacritics",
+      "note": "Accents in the artist name are normalized away.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Crazy in Love",
+        "artists": ["Beyoncé"],
+        "durationMs": 236000,
+        "platformId": "spotify:track:crazyinlove"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Crazy in Love",
+          "artists": ["Beyonce"],
+          "durationMs": 236000,
+          "platformId": "apple:crazyinlove"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.95 }
+    },
+    {
+      "id": "remix-legit-both-sides",
+      "category": "remix-legit",
+      "note": "The source IS a remix and so is the candidate — 'remix' is not a negative signal here.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Titanium (Remix)",
+        "artists": ["David Guetta", "Sia"],
+        "durationMs": 245000,
+        "platformId": "spotify:track:titanium-remix"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Titanium (Remix)",
+          "artists": ["David Guetta", "Sia"],
+          "durationMs": 245000,
+          "platformId": "apple:titanium-remix"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.9 }
+    },
+    {
+      "id": "tribute-filter-picks-real",
+      "category": "karaoke",
+      "note": "A 'tribute' band result is filtered; the genuine recording wins.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Wonderwall",
+        "artists": ["Oasis"],
+        "durationMs": 258000,
+        "platformId": "spotify:track:wonderwall"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Wonderwall (Tribute to Oasis)",
+          "artists": ["The Tribute Band"],
+          "durationMs": 257000,
+          "platformId": "apple:wonderwall-tribute"
+        },
+        {
+          "platform": "apple",
+          "title": "Wonderwall",
+          "artists": ["Oasis"],
+          "durationMs": 258000,
+          "platformId": "apple:wonderwall"
+        }
+      ],
+      "expect": {
+        "matched": true,
+        "confidence": "medium",
+        "tier": 2,
+        "minScore": 0.9,
+        "destinationPlatformId": "apple:wonderwall"
+      }
+    },
+    {
+      "id": "ambiguous-artist-duration-tiebreak",
+      "category": "ambiguous-artist",
+      "note": "Two same-title tracks by different artists; the matching artist wins even though the other is listed first.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Hold On",
+        "artists": ["Justin Bieber"],
+        "durationMs": 170000,
+        "platformId": "spotify:track:holdon-jb"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Hold On",
+          "artists": ["Wilson Phillips"],
+          "durationMs": 200000,
+          "platformId": "apple:holdon-wp"
+        },
+        {
+          "platform": "apple",
+          "title": "Hold On",
+          "artists": ["Justin Bieber"],
+          "durationMs": 170000,
+          "platformId": "apple:holdon-jb"
+        }
+      ],
+      "expect": {
+        "matched": true,
+        "confidence": "medium",
+        "tier": 2,
+        "minScore": 0.9,
+        "destinationPlatformId": "apple:holdon-jb"
+      }
+    },
+    {
+      "id": "review-duration-12s",
+      "category": "duration-review",
+      "note": "Identical title/artist but a 12s duration gap drops it into the review band (0.8).",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Clocks",
+        "artists": ["Coldplay"],
+        "durationMs": 307000,
+        "platformId": "spotify:track:clocks"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Clocks",
+          "artists": ["Coldplay"],
+          "durationMs": 319000,
+          "platformId": "apple:clocks"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "low", "tier": 2 }
+    },
+    {
+      "id": "review-duration-8s",
+      "category": "duration-review",
+      "note": "An 8s duration gap lands at 0.85 — still review, not auto-accept.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Fix You",
+        "artists": ["Coldplay"],
+        "durationMs": 295000,
+        "platformId": "spotify:track:fixyou"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Fix You",
+          "artists": ["Coldplay"],
+          "durationMs": 303000,
+          "platformId": "apple:fixyou"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "low", "tier": 2 }
+    },
+    {
+      "id": "review-duration-12s-b",
+      "category": "duration-review",
+      "note": "Another 12s-gap review case in the reverse direction.",
+      "destinationPlatform": "spotify",
+      "source": {
+        "platform": "apple",
+        "title": "Halo",
+        "artists": ["Beyonce"],
+        "durationMs": 261000,
+        "platformId": "apple:halo"
+      },
+      "searchCandidates": [
+        {
+          "platform": "spotify",
+          "title": "Halo",
+          "artists": ["Beyonce"],
+          "durationMs": 249000,
+          "platformId": "spotify:track:halo"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "low", "tier": 2 }
+    },
+    {
+      "id": "review-duration-8s-b",
+      "category": "duration-review",
+      "note": "8s gap review case with a two-word artist.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Electric Feel",
+        "artists": ["MGMT"],
+        "durationMs": 229000,
+        "platformId": "spotify:track:electricfeel"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Electric Feel",
+          "artists": ["MGMT"],
+          "durationMs": 237000,
+          "platformId": "apple:electricfeel"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "low", "tier": 2 }
+    },
+    {
+      "id": "none-weak-score-keeps-alternatives",
+      "category": "weak-score",
+      "note": "The only candidate is a wrong title AND wrong artist — below the review floor, so unmatched, but the candidate is still surfaced as an alternative.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Paranoid Android",
+        "artists": ["Radiohead"],
+        "durationMs": 383000,
+        "platformId": "spotify:track:paranoid"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Completely Unrelated Song",
+          "artists": ["A Different Band"],
+          "durationMs": 180000,
+          "platformId": "apple:unrelated"
+        }
+      ],
+      "expect": { "matched": false, "confidence": "none", "tier": 3 }
+    },
+    {
+      "id": "live-reject-only-live",
+      "category": "live-reject",
+      "note": "Second live-rejection case: the only candidate is a live cut.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Bohemian Rhapsody",
+        "artists": ["Queen"],
+        "durationMs": 354000,
+        "platformId": "spotify:track:bo-studio"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Bohemian Rhapsody (Live Aid)",
+          "artists": ["Queen"],
+          "durationMs": 360000,
+          "platformId": "apple:bo-liveaid"
+        }
+      ],
+      "expect": { "matched": false, "confidence": "none", "tier": 3 }
+    },
+    {
+      "id": "acoustic-reject",
+      "category": "acoustic-reject",
+      "note": "An acoustic re-recording is a different take; reject when the source isn't acoustic.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Thinking Out Loud",
+        "artists": ["Ed Sheeran"],
+        "durationMs": 281000,
+        "platformId": "spotify:track:thinkingoutloud"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Thinking Out Loud (Acoustic)",
+          "artists": ["Ed Sheeran"],
+          "durationMs": 279000,
+          "platformId": "apple:thinkingoutloud-acoustic"
+        }
+      ],
+      "expect": { "matched": false, "confidence": "none", "tier": 3 }
+    },
+    {
+      "id": "cover-reject",
+      "category": "cover-reject",
+      "note": "A cover by another artist must not be matched to the original.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Hurt",
+        "artists": ["Nine Inch Nails"],
+        "durationMs": 373000,
+        "platformId": "spotify:track:hurt"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Hurt (Johnny Cash Cover)",
+          "artists": ["Some Coverist"],
+          "durationMs": 216000,
+          "platformId": "apple:hurt-cover"
+        }
+      ],
+      "expect": { "matched": false, "confidence": "none", "tier": 3 }
+    },
+    {
+      "id": "remix-reject",
+      "category": "remix-reject",
+      "note": "Source is the original; a remix-only candidate is rejected.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "One More Time",
+        "artists": ["Daft Punk"],
+        "durationMs": 320000,
+        "platformId": "spotify:track:onemoretime"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "One More Time (Club Remix)",
+          "artists": ["Daft Punk"],
+          "durationMs": 400000,
+          "platformId": "apple:onemoretime-remix"
+        }
+      ],
+      "expect": { "matched": false, "confidence": "none", "tier": 3 }
+    },
+    {
+      "id": "instrumental-reject",
+      "category": "instrumental-reject",
+      "note": "An instrumental version is not the vocal original.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Clair de Lune",
+        "artists": ["Claude Debussy"],
+        "durationMs": 300000,
+        "platformId": "spotify:track:clairdelune-vocal"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Clair de Lune - Instrumental",
+          "artists": ["Studio Players"],
+          "durationMs": 305000,
+          "platformId": "apple:clairdelune-instrumental"
+        }
+      ],
+      "expect": { "matched": false, "confidence": "none", "tier": 3 }
+    },
+    {
+      "id": "sped-up-reject",
+      "category": "sped-up-reject",
+      "note": "A 'sped up' edit (a TikTok staple) is a different recording — reject it.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Cupid",
+        "artists": ["FIFTY FIFTY"],
+        "durationMs": 174000,
+        "platformId": "spotify:track:cupid"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Cupid (Sped Up Version)",
+          "artists": ["FIFTY FIFTY"],
+          "durationMs": 150000,
+          "platformId": "apple:cupid-spedup"
+        }
+      ],
+      "expect": { "matched": false, "confidence": "none", "tier": 3 }
+    },
+    {
+      "id": "absent-empty-2",
+      "category": "absent",
+      "note": "No candidates at all — must be unmatched, never fabricated.",
+      "destinationPlatform": "spotify",
+      "source": {
+        "platform": "apple",
+        "title": "An Unreleased Local Recording",
+        "artists": ["Garage Band"],
+        "durationMs": 195000,
+        "platformId": "apple:unreleased"
+      },
+      "searchCandidates": [],
+      "expect": { "matched": false, "confidence": "none", "tier": 3 }
+    },
+    {
+      "id": "absent-empty-3",
+      "category": "absent",
+      "note": "Empty candidate list from a YouTube destination read.",
+      "destinationPlatform": "youtube",
+      "source": {
+        "platform": "spotify",
+        "title": "Region-Locked Single",
+        "artists": ["Obscure Act"],
+        "durationMs": 210000,
+        "platformId": "spotify:track:regionlocked"
+      },
+      "searchCandidates": [],
+      "expect": { "matched": false, "confidence": "none", "tier": 3 }
+    },
+    {
+      "id": "absent-all-candidates-filtered",
+      "category": "absent",
+      "note": "Every candidate carries a negative signal, so all are filtered and nothing survives.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Zombie",
+        "artists": ["The Cranberries"],
+        "durationMs": 305000,
+        "platformId": "spotify:track:zombie"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Zombie (Live)",
+          "artists": ["The Cranberries"],
+          "durationMs": 310000,
+          "platformId": "apple:zombie-live"
+        },
+        {
+          "platform": "apple",
+          "title": "Zombie (Made Famous by The Cranberries)",
+          "artists": ["Karaoke Crew"],
+          "durationMs": 304000,
+          "platformId": "apple:zombie-karaoke"
+        }
+      ],
+      "expect": { "matched": false, "confidence": "none", "tier": 3 }
     }
   ]
 }

@@ -60,33 +60,53 @@ export → re-import preserves track identity including ISRCs.
 
 ```bash
 npm install
-npm test              # full suite (49 tests, no network)
-npm run test:matching # matching engine only
-npm run typecheck     # tsc --noEmit
+npm test                     # full suite (185 tests, no network)
+npm run test:matching        # matching engine only
+npm run test:matching:report # + per-category accuracy table
+npm run typecheck            # tsc --noEmit
 ```
 
-The fixtures in `tests/fixtures/tracks.json` cover the brief's required hard
-cases: classical composer/performer ambiguity, live-vs-studio, remaster,
-featured-artist formatting, catalog-absent, messy YouTube titles, non-Latin
-script, the karaoke "made famous by" trap, same-title/different-artist, and
-local-file skipping. **Extend these before tuning thresholds.**
+The fixtures in `tests/fixtures/tracks.json` are **50 hand-verified cases**
+across 23 categories, injecting the candidate lists a provider would return so
+the engine runs with zero network. Current matching accuracy:
 
-## Not yet built (next, per the brief's Build Order)
+```
+AGGREGATE   50/50   100.0%
+```
 
-These need platform credentials and/or infrastructure and are the natural next
-steps:
+`npm run test:matching:report` prints the full breakdown by category, so a
+normalization change that fixes remasters but breaks classical is visible
+immediately. **Don't let the aggregate drop, and extend the fixtures before
+tuning thresholds.**
 
-1. Network provider adapters — Spotify, Apple (developer-token JWT), YouTube read
-2. Apple developer-token generation + catalog ISRC lookup
-3. Inngest job wiring (`matchPlaylist`, `writePlaylist`) + SSE progress
-4. Review UI + the Next.js App Router pages/API routes
-5. Write paths (Apple via MusicKit JS, Spotify, YouTube behind a flag)
-6. Append-to-existing with dedup
-7. Redis rate limiters, ISRC/text cache, YouTube quota accounting
-8. Error taxonomy surfacing
+They cover the brief's required hard cases: classical composer/performer
+ambiguity, live-vs-studio, remaster, featured-artist formatting, catalog-absent,
+messy YouTube titles, non-Latin script, the karaoke "made famous by" trap, and
+same-title/different-artist — plus local-file skipping (hard case 10), which is
+a read-layer concern covered in `tests/matching/spotifyItems.test.ts`.
 
-Configuration is stubbed in [`.env.example`](./.env.example). No secrets are
-committed; `.p8` keys and `.env*.local` are gitignored.
+## Built
+
+- Provider adapters — Spotify, Apple (developer-token JWT + MusicKit), YouTube
+  read; JSON re-import as a fourth read-only source.
+- Matching engine (Tier 1/2/3) with the 50-case fixture harness above.
+- OAuth (Spotify/Google PKCE, Apple MusicKit) for private reads and writes.
+- Background jobs via Next `after()` / Inngest, with SSE progress streaming for
+  both matching and writing.
+- Write paths (create + append-with-dedup) for Spotify and Apple; YouTube behind
+  `YOUTUBE_WRITE_ENABLED`.
+- Redis cache (ISRC/text), sliding-window rate limiters, YouTube quota
+  accounting, write idempotency.
+- Export (CSV/JSON/M3U8) and the review UI.
+
+Configuration lives in [`.env.example`](./.env.example); setup steps in
+[`docs/SETUP.md`](./docs/SETUP.md). No secrets are committed; `.p8` keys and
+`.env*.local` are gitignored.
+
+## Not yet built
+
+- `PARTIAL_WRITE` recovery (resume a write that dies mid-batch).
+- v2 linked-playlist sync (needs Postgres — deliberately out of v1 scope).
 
 ## Hard rules from the brief
 

@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:matching": "vitest run tests/matching"
+    "test:matching": "vitest run tests/matching",
+    "test:matching:report": "MATCH_REPORT=1 vitest run tests/matching"
   },
   "dependencies": {
     "@upstash/redis": "^1.34.3",
