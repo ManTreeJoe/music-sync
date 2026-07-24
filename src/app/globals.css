@@ -1,47 +1,51 @@
 /* Playlist Bridge — design system
  *
- * Base style borrowed from The Send: stark, cinematic, high-contrast
- * black-and-white; enormous condensed UPPERCASE display type; hairline rules;
- * poster spacing; a single signal-red accent used with restraint. The
- * confidence connector remains the signature — here rendered in monochrome
- * with the authoritative tier lit red, like a REC light.
+ * Base style taken from The Send: grainy near-black canvas, GLOWING red display
+ * type, gold as a secondary accent, an electric-blue full-bleed section,
+ * monospace body with a dot-matrix accent for eyebrows/tags, rounded pills and
+ * cards, and a light top bar with a circle-arrow mark. The confidence connector
+ * stays the signature — authoritative tier lit red, auto-matched in gold.
  */
 
 :root {
-  /* palette — austere black & white */
-  --void: #0a0a0b; /* the canvas */
-  --ink: #131315; /* raised panel */
-  --ink-2: #1b1b1e; /* nested / hover */
-  --line: #2b2b30; /* hairline borders */
-  --paper: #f4f2ee; /* primary text, warm white */
-  --paper-dim: #9b9aa0; /* secondary */
-  --paper-faint: #5f5e65; /* tertiary / disabled */
+  /* palette */
+  --void: #0b0a0a; /* grainy near-black canvas */
+  --ink: #141212; /* raised panel */
+  --ink-2: #1c1919; /* nested / hover */
+  --line: #2c2827; /* hairline borders */
+  --paper: #f2efe8; /* primary text, warm white */
+  --paper-dim: #9c968c; /* secondary */
+  --paper-faint: #625d55; /* tertiary */
+  --cream: #e8e5dd; /* the light top bar */
 
-  /* the lone accent — a lit signal */
-  --send: #ec3323;
-  --send-soft: #ec332322;
+  /* accents */
+  --red: #e8140c; /* the glowing signal */
+  --red-soft: #e8140c26;
+  --gold: #edb62b; /* secondary — names, auto-matched */
+  --gold-soft: #edb62b26;
+  --blue: #2233e6; /* electric color-block */
 
   /* type */
   --font-display-stack: var(--font-display), 'Anton', 'Arial Narrow', system-ui,
     sans-serif;
-  --font-body-stack: var(--font-body), 'Archivo', system-ui, -apple-system,
-    sans-serif;
   --font-mono-stack: var(--font-mono), 'JetBrains Mono', ui-monospace, Menlo,
     monospace;
+  --font-dot-stack: var(--font-dot), 'JetBrains Mono', ui-monospace, monospace;
 
   /* type scale */
-  --t-xs: 0.75rem;
-  --t-sm: 0.9rem;
-  --t-base: 1rem;
-  --t-md: 1.2rem;
-  --t-lg: 1.6rem;
+  --t-xs: 0.72rem;
+  --t-sm: 0.88rem;
+  --t-base: 0.98rem;
+  --t-md: 1.15rem;
+  --t-lg: 1.7rem;
   --t-xl: 2.2rem;
-  --t-2xl: clamp(2.8rem, 7vw, 5rem);
-  --t-hero: clamp(3.6rem, 13vw, 10rem);
+  --t-2xl: clamp(2.6rem, 7vw, 4.6rem);
+  --t-hero: clamp(3.4rem, 12vw, 9rem);
 
-  /* geometry — sharp, poster-like */
-  --radius: 2px;
-  --radius-lg: 3px;
+  /* geometry — rounded */
+  --radius: 8px;
+  --radius-lg: 16px;
+  --pill: 999px;
   --maxw: 1140px;
   --gutter: clamp(1.25rem, 4vw, 3rem);
 }
@@ -58,19 +62,22 @@ body {
   margin: 0;
   min-height: 100dvh;
   background-color: var(--void);
-  /* faint cinematic vignette — keep the canvas near-black */
-  background-image: radial-gradient(
-    120% 90% at 50% -20%,
-    #17171a 0%,
-    transparent 60%
-  );
-  background-attachment: fixed;
   color: var(--paper);
-  font-family: var(--font-body-stack);
+  font-family: var(--font-mono-stack);
   font-size: var(--t-base);
-  line-height: 1.55;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+}
+
+/* film grain — fixed overlay of SVG fractal noise */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 h1,
@@ -81,7 +88,7 @@ h3 {
   line-height: 0.92;
   margin: 0;
   text-transform: uppercase;
-  letter-spacing: 0.005em;
+  letter-spacing: 0.01em;
 }
 
 a {
@@ -94,13 +101,25 @@ button {
 }
 
 :focus-visible {
-  outline: 2px solid var(--send);
+  outline: 2px solid var(--red);
   outline-offset: 3px;
 }
 
 .mono {
   font-family: var(--font-mono-stack);
   font-feature-settings: 'tnum' 1;
+}
+
+/* the dot-matrix voice, for eyebrows and tags */
+.tag {
+  font-family: var(--font-dot-stack);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.glow-red {
+  color: var(--red);
+  text-shadow: 0 0 16px rgba(232, 20, 12, 0.55), 0 0 42px rgba(232, 20, 12, 0.3);
 }
 
 /* ---- layout ---------------------------------------------------------- */
@@ -112,41 +131,59 @@ button {
   padding-inline: var(--gutter);
 }
 
+/* light top bar — dark logo/text on cream, like the reference */
 .site-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-block: 1.25rem;
-  border-bottom: 1px solid var(--line);
+  gap: 1rem;
+  padding: 0.8rem var(--gutter);
+  background: var(--cream);
+  color: #14110f;
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 
 .wordmark {
   display: inline-flex;
-  align-items: baseline;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 0.7rem;
   font-family: var(--font-display-stack);
-  font-size: 1.55rem;
+  font-size: 1.4rem;
   text-transform: uppercase;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
   text-decoration: none;
+  color: #14110f;
+}
+.brandmark {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid #14110f;
+  border-radius: 50%;
+  font-family: var(--font-mono-stack);
+  font-size: 1rem;
+  line-height: 1;
 }
 .wordmark b {
-  color: var(--send);
+  color: var(--red);
   font-weight: 400;
 }
-.wordmark .mono {
+.wordmark .ver {
+  font-family: var(--font-mono-stack);
   font-size: var(--t-xs);
-  color: var(--paper-faint);
+  color: #6b665e;
   letter-spacing: 0.05em;
-  align-self: center;
 }
 
 .header-note {
-  font-family: var(--font-mono-stack);
+  font-family: var(--font-dot-stack);
   font-size: var(--t-xs);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--paper-dim);
+  color: #4a463f;
 }
 
 /* ---- hero ------------------------------------------------------------ */
@@ -156,19 +193,18 @@ button {
 }
 
 .eyebrow {
-  font-family: var(--font-mono-stack);
-  font-size: var(--t-xs);
-  letter-spacing: 0.32em;
+  font-family: var(--font-dot-stack);
+  font-size: var(--t-sm);
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--send);
   margin: 0 0 1.6rem;
 }
 
 .hero h1 {
   font-size: var(--t-hero);
   max-width: 14ch;
+  text-shadow: 0 0 18px rgba(232, 20, 12, 0);
 }
-/* outlined second line — the poster move */
 .hero h1 .thin {
   color: transparent;
   -webkit-text-stroke: 1.5px var(--paper-dim);
@@ -176,7 +212,7 @@ button {
 
 .hero-lede {
   margin-top: 1.8rem;
-  max-width: 56ch;
+  max-width: 58ch;
   font-size: var(--t-md);
   color: var(--paper-dim);
 }
@@ -190,7 +226,8 @@ button {
   margin-top: 3rem;
   padding: 1.75rem 1.5rem;
   border: 1px solid var(--line);
-  background: #0e0e10;
+  border-radius: var(--radius-lg);
+  background: #100e0e;
   overflow: hidden;
 }
 
@@ -210,8 +247,8 @@ button {
   background: var(--paper-faint);
 }
 .node.on .dot {
-  background: var(--send);
-  box-shadow: 0 0 0 4px var(--send-soft), 0 0 16px var(--send);
+  background: var(--red);
+  box-shadow: 0 0 0 4px var(--red-soft), 0 0 16px var(--red);
 }
 .node .label {
   font-size: var(--t-xs);
@@ -219,12 +256,11 @@ button {
 }
 .node .label b {
   color: var(--paper);
-  font-weight: 600;
   display: block;
   font-family: var(--font-display-stack);
   font-weight: 400;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   font-size: 0.95rem;
 }
 
@@ -240,8 +276,9 @@ button {
   min-width: 36px;
 }
 .cable.live {
-  background: var(--send);
+  background: var(--red);
   height: 2px;
+  box-shadow: 0 0 10px var(--red-soft);
 }
 .cable.live::after {
   content: '';
@@ -253,7 +290,7 @@ button {
   margin-top: -3.5px;
   border-radius: 50%;
   background: var(--paper);
-  box-shadow: 0 0 12px var(--send);
+  box-shadow: 0 0 12px var(--red);
   animation: travel 2.6s cubic-bezier(0.5, 0, 0.5, 1) infinite;
 }
 
@@ -279,14 +316,16 @@ button {
 .panel {
   margin-top: 2.75rem;
   border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
   background: var(--ink);
+  overflow: hidden;
 }
 .panel-head {
   padding: 0.9rem 1.4rem;
   border-bottom: 1px solid var(--line);
-  font-family: var(--font-mono-stack);
-  font-size: var(--t-xs);
-  letter-spacing: 0.12em;
+  font-family: var(--font-dot-stack);
+  font-size: var(--t-sm);
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--paper-dim);
   display: flex;
@@ -307,9 +346,9 @@ button {
   flex: 1 1 320px;
   background: var(--void);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--pill);
   color: var(--paper);
-  padding: 0.9rem 1rem;
+  padding: 0.9rem 1.3rem;
   font-family: var(--font-mono-stack);
   font-size: var(--t-sm);
 }
@@ -317,32 +356,32 @@ button {
   color: var(--paper-faint);
 }
 .input:focus-visible {
-  border-color: var(--send);
+  border-color: var(--red);
   outline-offset: 0;
 }
 
 .btn {
   border: 1px solid transparent;
-  border-radius: var(--radius);
-  padding: 0.9rem 1.5rem;
+  border-radius: var(--pill);
+  padding: 0.9rem 1.6rem;
   font-family: var(--font-display-stack);
   font-weight: 400;
   font-size: 1.05rem;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease,
     color 0.15s ease;
 }
 .btn:active {
   transform: translateY(1px);
 }
-/* stark poster CTA: solid white block */
 .btn-primary {
-  background: var(--paper);
-  color: var(--void);
+  background: var(--red);
+  color: var(--paper);
+  box-shadow: 0 0 22px rgba(232, 20, 12, 0.35);
 }
 .btn-primary:hover {
-  background: #fff;
+  background: #ff2015;
 }
 .btn-ghost {
   background: transparent;
@@ -358,9 +397,9 @@ button {
   align-items: center;
   gap: 0.7rem;
   margin-top: 1.2rem;
-  font-family: var(--font-mono-stack);
-  font-size: var(--t-xs);
-  letter-spacing: 0.08em;
+  font-family: var(--font-dot-stack);
+  font-size: var(--t-sm);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--paper-dim);
   flex-wrap: wrap;
@@ -368,15 +407,15 @@ button {
 .seg {
   display: inline-flex;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--pill);
   overflow: hidden;
 }
 .seg button {
   background: transparent;
   border: 0;
   color: var(--paper-dim);
-  padding: 0.5rem 0.9rem;
-  font-family: var(--font-body-stack);
+  padding: 0.5rem 1rem;
+  font-family: var(--font-mono-stack);
   font-size: var(--t-sm);
   letter-spacing: 0;
   text-transform: none;
@@ -384,6 +423,58 @@ button {
 .seg button[aria-pressed='true'] {
   background: var(--paper);
   color: var(--void);
+}
+
+/* ---- electric-blue color-block band ---------------------------------- */
+
+.band-blue {
+  background: var(--blue);
+  color: var(--paper);
+  padding-block: clamp(2.75rem, 7vw, 4.5rem);
+}
+.band-blue .band-title {
+  font-family: var(--font-display-stack);
+  font-size: var(--t-2xl);
+  text-transform: uppercase;
+  color: var(--gold);
+  letter-spacing: 0.01em;
+}
+.band-blue .band-lede {
+  margin-top: 1rem;
+  max-width: 52ch;
+  color: #d9ddff;
+  font-size: var(--t-sm);
+}
+.tiers {
+  margin-top: 2.25rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.tier {
+  border: 1px solid #ffffff2e;
+  border-radius: var(--radius-lg);
+  padding: 1.3rem 1.3rem 1.5rem;
+  background: #0000001a;
+}
+.tier .t-k {
+  font-family: var(--font-dot-stack);
+  font-size: var(--t-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #cfd4ff;
+}
+.tier .t-name {
+  margin-top: 0.6rem;
+  font-family: var(--font-display-stack);
+  font-size: 1.7rem;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.tier .t-desc {
+  margin-top: 0.5rem;
+  font-size: var(--t-sm);
+  color: #e7eaff;
 }
 
 /* ---- review screen --------------------------------------------------- */
@@ -424,6 +515,7 @@ main.review {
   margin-top: 1.75rem;
   background: var(--line);
   border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 .meter {
@@ -437,20 +529,21 @@ main.review {
 }
 .meter .k {
   margin-top: 0.6rem;
-  font-family: var(--font-mono-stack);
+  font-family: var(--font-dot-stack);
   font-size: var(--t-xs);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--paper-dim);
 }
 .meter.high .n {
-  color: var(--send);
+  color: var(--red);
+  text-shadow: 0 0 18px rgba(232, 20, 12, 0.5);
 }
 .meter.medium .n {
-  color: var(--paper);
+  color: var(--gold);
 }
 .meter.low .n {
-  color: var(--paper-dim);
+  color: var(--paper);
 }
 .meter.none .n {
   color: var(--paper-faint);
@@ -473,9 +566,9 @@ main.review {
   flex-wrap: wrap;
 }
 .exports .lead {
-  font-family: var(--font-mono-stack);
+  font-family: var(--font-dot-stack);
   font-size: var(--t-xs);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--paper-dim);
   margin-right: 0.2rem;
@@ -501,7 +594,6 @@ main.review {
   font-family: var(--font-display-stack);
   font-size: var(--t-lg);
   text-transform: uppercase;
-  letter-spacing: 0.01em;
 }
 .group .g-count {
   font-family: var(--font-mono-stack);
@@ -510,9 +602,9 @@ main.review {
 }
 .group .g-hint {
   margin-left: auto;
-  font-family: var(--font-mono-stack);
+  font-family: var(--font-dot-stack);
   font-size: var(--t-xs);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--paper-faint);
 }
@@ -528,14 +620,14 @@ main.review {
   align-items: center;
   gap: 1rem;
   padding: 1.2rem 0;
-  border-bottom: 1px solid #1e1e21;
+  border-bottom: 1px solid #201d1d;
 }
 .row:last-child {
   border-bottom: 0;
 }
 
 .cell .title {
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--t-base);
 }
 .cell .artist {
@@ -558,10 +650,10 @@ main.review {
   justify-content: flex-end;
 }
 
-/* the connector — monochrome, authoritative tier lit red */
+/* the connector — red authoritative, gold auto, mono review/none */
 .connector {
   position: relative;
-  min-width: 104px;
+  min-width: 108px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -572,28 +664,29 @@ main.review {
   height: 2px;
 }
 .connector .badge {
-  font-family: var(--font-mono-stack);
-  font-size: 0.6rem;
-  letter-spacing: 0.14em;
+  font-family: var(--font-dot-stack);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 0.22rem 0.55rem;
+  padding: 0.24rem 0.6rem;
   white-space: nowrap;
+  border-radius: var(--pill);
   border: 1px solid transparent;
 }
 .c-high .line {
-  background: var(--send);
-  box-shadow: 0 0 10px var(--send-soft);
+  background: var(--red);
+  box-shadow: 0 0 12px var(--red-soft);
 }
 .c-high .badge {
-  color: var(--send);
-  border-color: var(--send);
+  color: var(--red);
+  border-color: var(--red);
 }
 .c-medium .line {
-  background: var(--paper);
+  background: var(--gold);
 }
 .c-medium .badge {
-  color: var(--paper);
-  border-color: var(--line);
+  color: var(--gold);
+  border-color: var(--gold-soft);
 }
 .c-low .line {
   background: repeating-linear-gradient(
@@ -629,7 +722,7 @@ main.review {
 }
 
 .isrc {
-  color: var(--send);
+  color: var(--red);
 }
 
 /* unmatched destination cell */
@@ -647,22 +740,23 @@ main.review {
   padding-bottom: 1px;
 }
 .deep-link:hover {
-  border-color: var(--send);
-  color: var(--send);
+  border-color: var(--red);
+  color: var(--red);
 }
 
 /* alternatives picker */
 .alts {
   grid-column: 1 / -1;
   margin-top: 0.9rem;
-  padding: 0.9rem 1rem;
+  padding: 0.9rem 1.1rem;
   background: var(--void);
   border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
 }
 .alts .alts-head {
-  font-family: var(--font-mono-stack);
+  font-family: var(--font-dot-stack);
   font-size: var(--t-xs);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--paper-dim);
   margin-bottom: 0.75rem;
@@ -673,14 +767,14 @@ main.review {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.6rem 0.15rem;
-  border-top: 1px solid #1e1e21;
+  border-top: 1px solid #201d1d;
 }
 .alt:first-of-type {
   border-top: 0;
 }
 .alt .alt-main .title {
   font-size: var(--t-sm);
-  font-weight: 600;
+  font-weight: 700;
 }
 .alt .alt-main .artist {
   font-size: var(--t-xs);
@@ -690,19 +784,19 @@ main.review {
   background: transparent;
   border: 1px solid var(--line);
   color: var(--paper);
-  border-radius: var(--radius);
-  padding: 0.42rem 0.9rem;
-  font-family: var(--font-mono-stack);
+  border-radius: var(--pill);
+  padding: 0.42rem 1rem;
+  font-family: var(--font-dot-stack);
   font-size: var(--t-xs);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 .pick:hover {
   border-color: var(--paper);
 }
 .pick[aria-pressed='true'] {
-  background: var(--send);
-  border-color: var(--send);
+  background: var(--red);
+  border-color: var(--red);
   color: var(--paper);
 }
 
@@ -722,6 +816,9 @@ main.review {
 @media (max-width: 720px) {
   .meters {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .tiers {
+    grid-template-columns: 1fr;
   }
   .row {
     grid-template-columns: 1fr;
