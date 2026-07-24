@@ -880,22 +880,24 @@ main.review {
   white-space: nowrap;
   will-change: transform, filter, opacity;
 }
-/* caption + index pinned to the lower area, out of the words' flow */
+/* caption crosses the centre line, over the sharp word (like The Send) */
 .sw-caption {
   position: absolute;
+  top: 50%;
   left: 0;
   right: 0;
-  bottom: 20%;
-  z-index: 20;
+  transform: translateY(-50%);
+  z-index: 30;
   margin: 0;
   font-family: var(--font-dot-stack);
   text-transform: uppercase;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.18em;
   color: var(--paper);
-  font-size: var(--t-md);
-  padding-inline: 1.25rem;
-  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.85);
-  transition: opacity 0.2s ease;
+  font-size: clamp(0.82rem, 2.9vw, 1.15rem);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.95), 0 0 16px rgba(0, 0, 0, 0.85);
 }
 .sw-index {
   position: absolute;
@@ -903,6 +905,7 @@ main.review {
   right: 0;
   bottom: 9%;
   z-index: 20;
+  text-align: center;
   font-family: var(--font-dot-stack);
   letter-spacing: 0.24em;
   color: var(--paper-faint);

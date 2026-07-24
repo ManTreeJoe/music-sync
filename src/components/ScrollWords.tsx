@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 // The transfer flow as a Send-style scroll section: big blurred red words
-// stacked and cycled by scroll, with a dot-matrix caption. Same four stages as
-// the old signal chain, now the signature moment.
+// stacked and cycled by scroll, with a dot-matrix caption crossing THROUGH the
+// centre (over the sharp word), scrambling as it changes.
 const STAGES = [
   { w: 'Source', c: 'paste a public link' },
   { w: 'Match', c: 'ISRC first, then a tuned fuzzy pass' },
@@ -12,10 +12,15 @@ const STAGES = [
   { w: 'Export', c: 'CSV · JSON · M3U8, at any point' },
 ];
 
+const SCRAMBLE = '▪▫—/#*<>[]';
+
 export function ScrollWords() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState(0); // fractional 0..n-1
   const [reduced, setReduced] = useState(false);
+  const [caption, setCaption] = useState(STAGES[0].c);
+
+  const activeIndex = Math.round(progress);
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -44,7 +49,36 @@ export function ScrollWords() {
     };
   }, []);
 
-  // Reduced motion (or pre-hydration for those users): a plain readable list.
+  // Scramble the caption in when the active word changes (dot-matrix flip).
+  useEffect(() => {
+    if (reduced) {
+      setCaption(STAGES[activeIndex]?.c ?? '');
+      return;
+    }
+    const target = STAGES[activeIndex]?.c ?? '';
+    const steps = 9;
+    let frame = 0;
+    const id = setInterval(() => {
+      frame++;
+      const revealed = Math.floor((frame / steps) * target.length);
+      const out = target
+        .split('')
+        .map((ch, i) =>
+          ch === ' ' || i < revealed
+            ? ch
+            : SCRAMBLE[Math.floor(Math.random() * SCRAMBLE.length)],
+        )
+        .join('');
+      setCaption(out);
+      if (frame >= steps) {
+        clearInterval(id);
+        setCaption(target);
+      }
+    }, 32);
+    return () => clearInterval(id);
+  }, [activeIndex, reduced]);
+
+  // Reduced motion: a plain readable list.
   if (reduced) {
     return (
       <section className="sw-static wrap" aria-label="How a transfer flows">
@@ -57,9 +91,6 @@ export function ScrollWords() {
       </section>
     );
   }
-
-  const activeIndex = Math.round(progress);
-  const capOpacity = Math.max(0, 1 - Math.abs(progress - activeIndex) * 2.4);
 
   return (
     <section
@@ -89,9 +120,8 @@ export function ScrollWords() {
             );
           })}
         </div>
-        <p className="sw-caption" style={{ opacity: capOpacity }}>
-          {STAGES[activeIndex]?.c}
-        </p>
+        {/* caption crosses the centre, over the sharp word */}
+        <p className="sw-caption">{caption}</p>
         <span className="sw-index">
           {String(activeIndex + 1).padStart(2, '0')} / {String(STAGES.length).padStart(2, '0')}
         </span>
