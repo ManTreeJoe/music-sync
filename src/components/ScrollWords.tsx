@@ -121,9 +121,9 @@ export function ScrollWords() {
                 key={s.w}
                 className="sw-word"
                 style={{
-                  transform: `translate(-50%, -50%) translateY(${dist * 0.72}em) scale(${1 - Math.min(abs * 0.06, 0.2)})`,
-                  filter: `blur(${Math.min(abs * 4.5, 12)}px)`,
-                  opacity: Math.max(0.3, 1 - abs * 0.4),
+                  transform: `translate(-50%, -50%) translateY(${dist * 0.6}em) scale(${1 - Math.min(abs * 0.07, 0.22)})`,
+                  filter: `blur(${Math.min(abs * 6.5, 17)}px)`,
+                  opacity: Math.max(0.08, 1 - abs * 0.58),
                   zIndex: STAGES.length - Math.round(abs),
                 }}
               >
