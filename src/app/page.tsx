@@ -32,13 +32,6 @@ export default function Home() {
           <br />
           <span className="thin">Keep the record.</span>
         </h1>
-        <p className="hero-lede">
-          Paste a link and Playlist Bridge matches every track across catalogs —
-          by ISRC first, then by a tuned fuzzy pass — so a hundred songs land on
-          the other service in one go. Whatever doesn&apos;t match, you resolve
-          in a couple of minutes. Nothing is ever locked in: export the whole
-          thing as CSV, JSON, or M3U8 at any point.
-        </p>
 
         <LinkForm />
       </section>
@@ -66,6 +59,10 @@ export default function Home() {
             ))}
           </div>
         </div>
+      </section>
+
+      <section className="closing wrap">
+        <p>Match by ISRC, then fuzzy. Resolve the rest — export anytime.</p>
       </section>
 
       <footer className="foot wrap">

@@ -231,9 +231,13 @@ button {
   -webkit-text-stroke: 1.5px var(--paper-dim);
 }
 
-.hero-lede {
-  margin-top: 1.8rem;
-  max-width: 58ch;
+/* quiet closing line near the bottom */
+.closing {
+  padding-block: clamp(2.5rem, 6vw, 4.5rem);
+}
+.closing p {
+  margin: 0;
+  max-width: 52ch;
   font-size: var(--t-md);
   color: var(--paper-dim);
 }
