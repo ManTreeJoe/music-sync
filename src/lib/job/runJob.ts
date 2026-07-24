@@ -26,11 +26,16 @@ export interface RunJobInput {
 export interface RunJobDeps {
   resolveProviderForUrl?: typeof registryResolveUrl;
   getProvider?: (platform: Platform) => MusicProvider;
-  /** Auth for destination reads. Public matching needs no user auth. */
-  auth?: Auth;
+  /** Auth for reading the SOURCE, chosen by platform (a user token unlocks
+   *  private playlists). Defaults to public (no auth). */
+  sourceAuthFor?: (platform: Platform) => Auth;
+  /** Auth for destination matching. Public matching needs no user auth. */
+  destAuth?: Auth;
   concurrency?: number;
   onProgress?: (done: number, total: number) => void;
 }
+
+const noAuth = (): Auth => ({ kind: 'none' });
 
 interface SourceRead {
   name: string;
@@ -73,7 +78,8 @@ async function readSource(
 export async function runJob(input: RunJobInput, deps: RunJobDeps = {}): Promise<ReviewJob> {
   const resolveUrl = deps.resolveProviderForUrl ?? registryResolveUrl;
   const getProvider = deps.getProvider ?? registryGetProvider;
-  const auth: Auth = deps.auth ?? { kind: 'none' };
+  const sourceAuthFor = deps.sourceAuthFor ?? noAuth;
+  const destAuth: Auth = deps.destAuth ?? { kind: 'none' };
 
   const parsed = resolveUrl(input.url);
   if (!parsed) {
@@ -93,8 +99,8 @@ export async function runJob(input: RunJobInput, deps: RunJobDeps = {}): Promise
   }
 
   try {
-    const read = await readSource(source, parsed.playlistId, auth);
-    const results = await resolveMatches(read.tracks, dest, auth, {
+    const read = await readSource(source, parsed.playlistId, sourceAuthFor(source.platform));
+    const results = await resolveMatches(read.tracks, dest, destAuth, {
       concurrency: deps.concurrency,
       onProgress: deps.onProgress,
     });

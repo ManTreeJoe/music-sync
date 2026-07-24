@@ -459,6 +459,30 @@ button {
   font-size: var(--t-sm);
 }
 
+.connect-row {
+  margin-top: 1rem;
+  min-height: 1.2em;
+  font-size: var(--t-sm);
+}
+.connect-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--paper-dim);
+  font: inherit;
+  border-bottom: 1px solid var(--line);
+}
+.connect-link:hover {
+  color: var(--paper);
+  border-color: var(--paper);
+}
+.connect-ok {
+  color: var(--paper-dim);
+}
+.connect-ok .connect-link {
+  color: var(--paper-faint);
+}
+
 .review-loading {
   color: var(--paper-dim);
   padding-block: 2.5rem;

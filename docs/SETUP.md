@@ -8,11 +8,15 @@ With the keys below in `.env.local`, pasting a **public Spotify link** and
 choosing **Apple Music** gives you: the tracks read, matched (ISRC → fuzzy), the
 **review screen**, and **CSV/JSON/M3U8 export**.
 
+**Private Spotify playlists** also work now — click **"Connect Spotify"** on the
+form to log in (OAuth/PKCE), then paste one of your own private links. This needs
+`SESSION_SECRET` set (any 32+ char string) so the login cookie can be encrypted.
+
 > Heads up: **writing** the new playlist onto the destination isn't wired yet.
 > So today "Convert" gets you matched results + review + export, not a created
-> Apple/Spotify playlist. Writing needs a user-login (OAuth) flow that's the
-> next feature. Everything below is what the read/match flow needs now, with the
-> write-only extras marked **(later)**.
+> Apple/Spotify playlist. Writing reuses this same Spotify login. Everything
+> below is what the read/match flow needs now, with the write-only extras
+> marked **(later)**.
 
 ---
 
@@ -98,6 +102,10 @@ npm install
 npm run dev                    # http://localhost:3000
 ```
 
-Not needed yet (leave blank): `SESSION_SECRET`, `UPSTASH_REDIS_REST_*`,
-`GOOGLE_CLIENT_*` — those come online with sessions, caching, and the write
-path.
+Set `SESSION_SECRET` to any 32+ character string — it encrypts the login cookie
+used by "Connect Spotify" (private playlists). Also register the callback URL
+`http://localhost:3000/api/auth/spotify/callback` in the Spotify dashboard (you
+already added it above).
+
+Not needed yet (leave blank): `UPSTASH_REDIS_REST_*`, `GOOGLE_CLIENT_*` — those
+come online with caching and YouTube writes.

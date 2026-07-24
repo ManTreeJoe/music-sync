@@ -6,7 +6,9 @@
 import { NextResponse } from 'next/server';
 import { runJob } from '@/lib/job/runJob';
 import { JobError, type JobErrorCode } from '@/lib/job/types';
-import type { Platform } from '@/lib/providers/types';
+import type { Auth, Platform } from '@/lib/providers/types';
+import { getSession } from '@/lib/session';
+import { getValidSpotifyToken } from '@/lib/auth/spotifyOAuth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,8 +54,27 @@ export async function POST(req: Request) {
     );
   }
 
+  // If the user has connected Spotify, use their token so private playlists
+  // (owned by them) can be read. Public reads still need no login.
+  const session = await getSession();
+  let spotifyToken: string | null = null;
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  if (session.spotify && clientId) {
+    try {
+      spotifyToken = await getValidSpotifyToken(session, { clientId });
+      await session.save(); // persist a refreshed token
+    } catch {
+      spotifyToken = null; // fall back to public read
+    }
+  }
+
+  const sourceAuthFor = (platform: Platform): Auth =>
+    platform === 'spotify' && spotifyToken
+      ? { kind: 'bearer', token: spotifyToken }
+      : { kind: 'none' };
+
   try {
-    const job = await runJob({ url, destination: destination as Platform });
+    const job = await runJob({ url, destination: destination as Platform }, { sourceAuthFor });
     return NextResponse.json(job);
   } catch (e) {
     const err = e instanceof JobError ? e : new JobError('PLATFORM_ERROR', 'Unexpected error.');
