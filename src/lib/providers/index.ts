@@ -8,6 +8,7 @@
 import type { MusicProvider, Platform } from './types';
 import { SpotifyProvider } from './spotify';
 import { AppleProvider } from './apple';
+import { YouTubeProvider } from './youtube';
 
 const registry = new Map<Platform, MusicProvider>();
 
@@ -19,6 +20,8 @@ export function registerProvider(provider: MusicProvider): void {
 // network or env access until a method is called. YouTube lands later.
 registerProvider(new SpotifyProvider());
 registerProvider(new AppleProvider());
+// YouTube ships as a read source first; writes are gated by YOUTUBE_WRITE_ENABLED.
+registerProvider(new YouTubeProvider());
 
 export function getProvider(platform: Platform): MusicProvider {
   const provider = registry.get(platform);
