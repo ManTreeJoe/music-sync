@@ -1,5 +1,6 @@
 import { SiteHeader } from '@/components/SiteHeader';
 import { LinkForm } from '@/components/LinkForm';
+import { ScrollWords } from '@/components/ScrollWords';
 
 const TIERS = [
   {
@@ -39,40 +40,12 @@ export default function Home() {
           thing as CSV, JSON, or M3U8 at any point.
         </p>
 
-        {/* Signature: the signal chain. Its connector treatment is the same
-            language the review screen uses to encode match confidence. */}
-        <div className="chain" aria-hidden="true">
-          <div className="node on">
-            <span className="dot" />
-            <span className="label">
-              <b>Source</b>public link
-            </span>
-          </div>
-          <div className="cable live" />
-          <div className="node on">
-            <span className="dot" />
-            <span className="label">
-              <b>Match</b>ISRC · fuzzy
-            </span>
-          </div>
-          <div className="cable live" />
-          <div className="node on">
-            <span className="dot" />
-            <span className="label">
-              <b>Destination</b>new playlist
-            </span>
-          </div>
-          <div className="cable" />
-          <div className="node">
-            <span className="dot" />
-            <span className="label">
-              <b>Export</b>csv · json · m3u8
-            </span>
-          </div>
-        </div>
-
         <LinkForm />
       </section>
+
+      {/* Signature scroll moment: the flow as big blurred red words that cycle
+          on scroll, echoing The Send. */}
+      <ScrollWords />
 
       {/* Electric-block section, echoing the reference's bold color band. */}
       <section className="band-blue">

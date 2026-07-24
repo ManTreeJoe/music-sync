@@ -843,6 +843,88 @@ main.review {
   color: var(--paper-dim);
 }
 
+/* ---- scroll-words (Send-style scroll section) ------------------------ */
+
+.scroll-words {
+  position: relative;
+}
+.sw-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  text-align: center;
+}
+.sw-words {
+  position: relative;
+  width: 100%;
+  height: clamp(3rem, 14vw, 11rem);
+  display: grid;
+  place-items: center;
+}
+.sw-word {
+  position: absolute;
+  font-family: var(--font-display-stack);
+  text-transform: uppercase;
+  font-size: clamp(3rem, 14vw, 11rem);
+  line-height: 1;
+  color: var(--red);
+  text-shadow: 0 0 28px rgba(232, 20, 12, 0.5), 0 0 80px rgba(232, 20, 12, 0.28);
+  white-space: nowrap;
+  will-change: transform, filter, opacity;
+}
+.sw-caption {
+  margin: 2.6rem 0 0;
+  min-height: 1.5em;
+  font-family: var(--font-dot-stack);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--paper);
+  font-size: var(--t-md);
+  padding-inline: 1.25rem;
+  transition: opacity 0.2s ease;
+}
+.sw-index {
+  position: absolute;
+  bottom: 7vh;
+  font-family: var(--font-dot-stack);
+  letter-spacing: 0.24em;
+  color: var(--paper-faint);
+  font-size: var(--t-xs);
+}
+
+/* reduced-motion fallback: a plain readable list */
+.sw-static {
+  padding-block: 3rem 1rem;
+  display: flex;
+  flex-direction: column;
+}
+.sw-static-row {
+  display: flex;
+  align-items: baseline;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+  padding-block: 1.2rem;
+  border-bottom: 1px solid var(--line);
+}
+.sw-static-word {
+  font-family: var(--font-display-stack);
+  text-transform: uppercase;
+  font-size: var(--t-xl);
+  color: var(--red);
+}
+.sw-static-cap {
+  font-family: var(--font-dot-stack);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--paper-dim);
+  font-size: var(--t-sm);
+}
+
 /* ---- responsive ------------------------------------------------------ */
 
 @media (max-width: 720px) {
