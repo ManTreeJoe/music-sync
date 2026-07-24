@@ -38,6 +38,12 @@ export function WritePanel({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<WriteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Stable per-panel key so a retry replays instead of double-creating.
+  const [idempotencyKey] = useState(() =>
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random()}`,
+  );
 
   const refreshStatus = () =>
     fetch('/api/session')
@@ -91,6 +97,7 @@ export function WritePanel({
           playlistId: mode === 'append' ? selected : undefined,
           tracks,
           unmatchedCount,
+          idempotencyKey,
         }),
       });
       const data = await res.json();

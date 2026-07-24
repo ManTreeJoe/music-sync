@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { runJob } from '../../src/lib/job/runJob';
+import { _resetRedis } from '../../src/lib/redis';
+
+beforeEach(() => _resetRedis()); // clear the match cache between tests
 import { JobError } from '../../src/lib/job/types';
 import type { Auth, MusicProvider, Platform, Playlist, SearchQuery, Track } from '../../src/lib/providers/types';
 

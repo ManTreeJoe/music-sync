@@ -1,13 +1,13 @@
 // lib/quota.ts
 //
-// YouTube Data API quota accounting. The 10,000 units/day is PROJECT-WIDE, not
-// per user, so it's the binding constraint on YouTube-destination transfers.
-// Preflight before enqueuing a write — never fail mid-job with a half-built
-// playlist.
+// YouTube Data API quota accounting. The 10,000 units/day is PROJECT-WIDE, so
+// it's the binding constraint on YouTube-destination transfers. Preflight before
+// enqueuing a write — never fail mid-job with a half-built playlist.
 //
-// The accounting store here is in-memory (a single-process fallback). In
-// production this must be Redis so it's shared across serverless invocations;
-// the interface below is written to swap cleanly.
+// Backed by Redis so the count is shared across serverless invocations. Google
+// resets quota at midnight Pacific.
+
+import { redis } from './redis';
 
 export const YOUTUBE_COSTS = {
   search: 100,
@@ -41,26 +41,20 @@ export function quotaKey(date = new Date()): string {
   return `quota:youtube:${pacific}`;
 }
 
-const memStore = new Map<string, number>();
-
-export function consumed(key = quotaKey()): number {
-  return memStore.get(key) ?? 0;
+export async function consumed(key = quotaKey()): Promise<number> {
+  return (await redis.get<number>(key)) ?? 0;
 }
 
 /** Reserve headroom so cheap reads never starve behind an expensive write. */
-export function canAfford(
+export async function canAfford(
   units: number,
   budget = Number(process.env.YOUTUBE_DAILY_QUOTA ?? 10000),
   reserve = 500,
-): boolean {
-  return consumed() + units <= budget - reserve;
+): Promise<boolean> {
+  return (await consumed()) + units <= budget - reserve;
 }
 
-export function charge(units: number, key = quotaKey()): void {
-  memStore.set(key, consumed(key) + units);
-}
-
-/** Test hook. */
-export function _resetQuota(): void {
-  memStore.clear();
+export async function charge(units: number, key = quotaKey()): Promise<void> {
+  await redis.incrby(key, units);
+  await redis.expire(key, 60 * 60 * 36);
 }

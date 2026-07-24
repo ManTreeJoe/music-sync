@@ -86,6 +86,7 @@ export class SpotifyProvider implements MusicProvider {
     const token = await this.bearer(auth);
     return httpJson<T>(`${API}${path}`, {
       headers: { Authorization: `Bearer ${token}` },
+      rateLimit: 'spotify',
       fetchImpl: this.fetchImpl,
     });
   }
@@ -162,6 +163,7 @@ export class SpotifyProvider implements MusicProvider {
       {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        rateLimit: 'spotify',
         body: JSON.stringify({ name, description: desc, public: false }),
         fetchImpl: this.fetchImpl,
       },
@@ -184,6 +186,7 @@ export class SpotifyProvider implements MusicProvider {
       await httpJson(`${API}/playlists/${playlistId}/tracks`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        rateLimit: 'spotify',
         body: JSON.stringify({ uris }),
         fetchImpl: this.fetchImpl,
       });

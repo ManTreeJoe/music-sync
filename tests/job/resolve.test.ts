@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { resolveMatch, resolveMatches } from '../../src/lib/job/resolve';
+import { _resetRedis } from '../../src/lib/redis';
+
+beforeEach(() => _resetRedis()); // clear the match cache between tests
 import type { Auth, MusicProvider, Playlist, SearchQuery, Track } from '../../src/lib/providers/types';
 
 const auth: Auth = { kind: 'none' };

@@ -5,6 +5,9 @@
 // the in-process resilience layer; the Redis token-bucket limiter is a separate
 // concern that can wrap these calls once Upstash is configured.
 
+import type { Platform } from './providers/types';
+import { acquire } from './ratelimit';
+
 export class HttpError extends Error {
   status: number;
   headers: Headers;
@@ -27,6 +30,8 @@ export interface HttpOptions {
   body?: string;
   /** Max attempts on retryable failures. Default 5. */
   retries?: number;
+  /** If set, acquire a rate-limit slot for this platform before each attempt. */
+  rateLimit?: Platform;
   /** Injectable fetch, for tests. Defaults to global fetch. */
   fetchImpl?: typeof fetch;
 }
@@ -41,6 +46,7 @@ export async function httpJson<T>(url: string, opts: HttpOptions = {}): Promise<
 
   let lastErr: unknown;
   for (let attempt = 0; attempt < retries; attempt++) {
+    if (opts.rateLimit) await acquire(opts.rateLimit);
     let res: Response;
     try {
       res = await doFetch(url, { method, headers, body });

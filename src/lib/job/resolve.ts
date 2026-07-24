@@ -9,6 +9,7 @@
 // and provider-free; provider orchestration belongs here.
 
 import { matchTrack } from '../matching';
+import { getCachedIsrc, setCachedIsrc, getCachedText, setCachedText } from '../cache';
 import type { Auth, MatchResult, MusicProvider, Platform, Track } from '../providers/types';
 
 export interface ResolveOptions {
@@ -27,26 +28,31 @@ export async function resolveMatch(
   const destinationPlatform: Platform = dest.platform;
 
   // Tier 1 — ISRC, only if the source carries one and the platform supports it.
+  // Cached: an ISRC → platform-id resolution is stable for ~30 days.
   if (source.isrc) {
-    const maybe = dest.findByIsrc(source.isrc, auth);
-    if (maybe) {
-      const isrcCandidates = await maybe;
-      if (isrcCandidates.length > 0) {
-        return matchTrack({ source, isrcCandidates, destinationPlatform });
+    let isrcCandidates = await getCachedIsrc(destinationPlatform, source.isrc);
+    if (isrcCandidates === null) {
+      const maybe = dest.findByIsrc(source.isrc, auth);
+      if (maybe) {
+        isrcCandidates = await maybe;
+        await setCachedIsrc(destinationPlatform, source.isrc, isrcCandidates);
       }
+    }
+    if (isrcCandidates && isrcCandidates.length > 0) {
+      return matchTrack({ source, isrcCandidates, destinationPlatform });
     }
   }
 
-  // Tier 2 — free-text search (falls through to Tier 3 unmatched inside matchTrack).
-  const searchCandidates = await dest.search(
-    {
-      title: source.title,
-      artist: source.artists[0] ?? '',
-      album: source.album,
-      durationMs: source.durationMs,
-    },
-    auth,
-  );
+  // Tier 2 — free-text search (cached; falls through to Tier 3 in matchTrack).
+  const artist = source.artists[0] ?? '';
+  let searchCandidates = await getCachedText(destinationPlatform, source.title, artist);
+  if (searchCandidates === null) {
+    searchCandidates = await dest.search(
+      { title: source.title, artist, album: source.album, durationMs: source.durationMs },
+      auth,
+    );
+    await setCachedText(destinationPlatform, source.title, artist, searchCandidates);
+  }
   return matchTrack({ source, searchCandidates, destinationPlatform });
 }
 

@@ -5,9 +5,10 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { destAuthFor } from '@/lib/auth/sessionAuth';
-import { runWrite, type WriteTrackRef } from '@/lib/job/write';
+import { runWrite, type WriteResult, type WriteTrackRef } from '@/lib/job/write';
 import { JobError, type JobErrorCode } from '@/lib/job/types';
 import { canAfford, charge } from '@/lib/quota';
+import { redis } from '@/lib/redis';
 import type { Platform } from '@/lib/providers/types';
 
 export const runtime = 'nodejs';
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
     name?: unknown;
     tracks?: unknown;
     unmatchedCount?: unknown;
+    idempotencyKey?: unknown;
   };
   try {
     body = await req.json();
@@ -81,6 +83,22 @@ export async function POST(req: Request) {
     );
   }
 
+  // Idempotency: a retry with the same key replays the stored result instead of
+  // creating a second playlist. (Best-effort without a strict lock; the client
+  // also disables the button while writing.)
+  const idem = typeof body.idempotencyKey === 'string' ? body.idempotencyKey : null;
+  if (idem) {
+    const prior = await redis.get<WriteResult>(`idem:${idem}`);
+    if (prior) return NextResponse.json(prior);
+    const lock = await redis.set(`idem:${idem}:lock`, '1', { nx: true, ex: 120 });
+    if (!lock) {
+      return NextResponse.json(
+        { error: { code: 'DEST_NOT_WRITABLE', message: 'That write is already in progress.' } },
+        { status: 409 },
+      );
+    }
+  }
+
   try {
     const session = await getSession();
     const auth = await destAuthFor(dest, session);
@@ -102,8 +120,12 @@ export async function POST(req: Request) {
         quotaResetHint: 'at midnight Pacific',
       },
     );
+    if (idem) await redis.set(`idem:${idem}`, result, { ex: 600 });
     return NextResponse.json(result);
   } catch (e) {
+    // A failed write must not block a retry — release the in-progress lock so the
+    // same key can be used again. (The stored result is only set on success.)
+    if (idem) await redis.del(`idem:${idem}:lock`);
     const err = e instanceof JobError ? e : new JobError('PLATFORM_ERROR', 'Unexpected error.');
     return NextResponse.json(
       { error: { code: err.code, message: err.message } },
