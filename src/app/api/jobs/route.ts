@@ -15,7 +15,9 @@ import { NextResponse, after } from 'next/server';
 import { resolveProviderForUrl } from '@/lib/providers';
 import { createJob, newJobId } from '@/lib/job/store';
 import { executeMatchJob } from '@/lib/job/execute';
+import { parseImportText } from '@/lib/providers/jsonFile';
 import { inngest, EVENTS } from '@/inngest/client';
+import { JobError } from '@/lib/job/types';
 import type { Auth, Platform } from '@/lib/providers/types';
 import { getSession } from '@/lib/session';
 import { getValidSpotifyToken } from '@/lib/auth/spotifyOAuth';
@@ -30,7 +32,7 @@ const DESTINATIONS: Platform[] = ['spotify', 'apple', 'youtube'];
 const inngestEnabled = process.env.INNGEST_ENABLED === 'true';
 
 export async function POST(req: Request) {
-  let body: { url?: unknown; destination?: unknown };
+  let body: { url?: unknown; json?: unknown; destination?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -40,15 +42,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const url = typeof body.url === 'string' ? body.url.trim() : '';
   const destination = body.destination;
-
-  if (!url) {
-    return NextResponse.json(
-      { error: { code: 'INVALID_URL', message: 'Paste a playlist link first.' } },
-      { status: 400 },
-    );
-  }
   if (typeof destination !== 'string' || !DESTINATIONS.includes(destination as Platform)) {
     return NextResponse.json(
       { error: { code: 'INVALID_URL', message: 'Pick a destination service.' } },
@@ -56,6 +50,30 @@ export async function POST(req: Request) {
     );
   }
   const dest = destination as Platform;
+
+  // Re-import path: the source is a pasted/uploaded JSON export, not a link.
+  // No auth, no network read, no Inngest — parse and match in-process.
+  if (typeof body.json === 'string' && body.json.trim()) {
+    let imported;
+    try {
+      imported = parseImportText(body.json);
+    } catch (e) {
+      const err = e instanceof JobError ? e : new JobError('INVALID_URL', 'That import failed.');
+      return NextResponse.json({ error: { code: err.code, message: err.message } }, { status: 400 });
+    }
+    const id = newJobId();
+    await createJob({ id, kind: 'match', url: imported.playlist.url ?? '', destination: dest, total: 0 });
+    after(() => executeMatchJob({ id, importSource: imported, destination: dest }));
+    return NextResponse.json({ jobId: id }, { status: 202 });
+  }
+
+  const url = typeof body.url === 'string' ? body.url.trim() : '';
+  if (!url) {
+    return NextResponse.json(
+      { error: { code: 'INVALID_URL', message: 'Paste a playlist link first.' } },
+      { status: 400 },
+    );
+  }
 
   // Validate the link up front so a doomed job never reaches the store.
   const parsed = resolveProviderForUrl(url);

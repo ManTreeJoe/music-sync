@@ -452,6 +452,20 @@ button {
 .dest-export {
   margin-left: auto;
 }
+.import-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 0.7rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-dot-stack);
+  font-size: var(--t-sm);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+  flex-wrap: wrap;
+}
 
 .form-error {
   margin-top: 0.9rem;

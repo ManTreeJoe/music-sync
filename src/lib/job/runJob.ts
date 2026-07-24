@@ -11,6 +11,7 @@ import {
   getProvider as registryGetProvider,
   resolveProviderForUrl as registryResolveUrl,
 } from '../providers';
+import { JsonFileProvider, type ParsedImport } from '../providers/jsonFile';
 import { resolveMatches } from './resolve';
 import { JobError, type ReviewJob } from './types';
 import { toJobError } from './errors';
@@ -19,7 +20,10 @@ import type { Auth, MusicProvider, Platform, Track } from '../providers/types';
 const MAX_TRACKS = 5000; // refuse absurd playlists up front
 
 export interface RunJobInput {
-  url: string;
+  /** A platform playlist link. Omit when importing from JSON. */
+  url?: string;
+  /** A parsed JSON export used as the source instead of a link. */
+  importSource?: ParsedImport;
   destination: Platform;
 }
 
@@ -81,13 +85,25 @@ export async function runJob(input: RunJobInput, deps: RunJobDeps = {}): Promise
   const sourceAuthFor = deps.sourceAuthFor ?? noAuth;
   const destAuth: Auth = deps.destAuth ?? { kind: 'none' };
 
-  const parsed = resolveUrl(input.url);
-  if (!parsed) {
-    throw new JobError('INVALID_URL', "That doesn't look like a playlist link we recognize.");
+  // Two source shapes: a parsed JSON import, or a platform link. The JSON path
+  // wraps the parsed doc in a read-only provider so the rest is identical.
+  let source: MusicProvider;
+  let playlistId: string;
+  if (input.importSource) {
+    source = new JsonFileProvider(input.importSource);
+    playlistId = 'import';
+  } else {
+    const parsed = resolveUrl(input.url ?? '');
+    if (!parsed) {
+      throw new JobError('INVALID_URL', "That doesn't look like a playlist link we recognize.");
+    }
+    source = parsed.provider;
+    playlistId = parsed.playlistId;
   }
-  const source = parsed.provider;
 
-  if (source.platform === input.destination) {
+  // A link into the same service it came from is a no-op; a JSON re-import to
+  // its origin platform is a legitimate "restore", so only guard the link path.
+  if (!input.importSource && source.platform === input.destination) {
     throw new JobError('SAME_PLATFORM', 'Source and destination are the same service.');
   }
 
@@ -99,7 +115,7 @@ export async function runJob(input: RunJobInput, deps: RunJobDeps = {}): Promise
   }
 
   try {
-    const read = await readSource(source, parsed.playlistId, sourceAuthFor(source.platform));
+    const read = await readSource(source, playlistId, sourceAuthFor(source.platform));
     const results = await resolveMatches(read.tracks, dest, destAuth, {
       concurrency: deps.concurrency,
       onProgress: deps.onProgress,

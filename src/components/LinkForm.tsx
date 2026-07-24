@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Platform } from '@/lib/providers/types';
 import { Connections } from './Connections';
 
@@ -20,17 +20,18 @@ export function LinkForm() {
   const [dest, setDest] = useState<Platform>('apple');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
-  async function run(mode: 'convert' | 'export') {
+  // Kick off a background job (link or JSON import) and hand off to the review
+  // screen, which streams progress from the returned job id.
+  async function submit(payload: Record<string, unknown>, mode: 'convert' | 'export' = 'convert') {
     setError(null);
     setBusy(true);
     try {
-      // The match runs in the background; we get a job id back right away and
-      // stream progress on the review screen.
       const res = await fetch('/api/jobs', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ url: link, destination: dest }),
+        body: JSON.stringify({ ...payload, destination: dest }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -45,6 +46,19 @@ export function LinkForm() {
     } finally {
       setBusy(false);
     }
+  }
+
+  const run = (mode: 'convert' | 'export') => submit({ url: link }, mode);
+
+  async function importFile(file: File) {
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      setError("Couldn't read that file.");
+      return;
+    }
+    await submit({ json: text });
   }
 
   return (
@@ -110,6 +124,29 @@ export function LinkForm() {
               Just export it
             </button>
           </span>
+        </div>
+
+        <div className="import-row">
+          <span>Have a JSON export?</span>
+          <button
+            className="btn btn-ghost"
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            disabled={busy}
+          >
+            Re-import it →
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = ''; // allow re-selecting the same file
+              if (f) void importFile(f);
+            }}
+          />
         </div>
       </div>
     </form>

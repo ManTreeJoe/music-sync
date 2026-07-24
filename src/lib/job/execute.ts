@@ -16,22 +16,25 @@ import { runJob, type RunJobDeps } from './runJob';
 import { setStatus, setProgress, completeJob, failJob } from './store';
 import { toJobError } from './errors';
 import { JobError } from './types';
+import type { ParsedImport } from '../providers/jsonFile';
 import type { Platform } from '../providers/types';
 
 export interface ExecuteMatchInput {
   id: string;
-  url: string;
+  /** A platform link, or omit and pass importSource for a JSON re-import. */
+  url?: string;
+  importSource?: ParsedImport;
   destination: Platform;
   /** Extra runJob deps (source auth, provider overrides). Progress is wired here. */
   deps?: Omit<RunJobDeps, 'onProgress'>;
 }
 
 export async function executeMatchJob(input: ExecuteMatchInput): Promise<void> {
-  const { id, url, destination, deps } = input;
+  const { id, url, importSource, destination, deps } = input;
   try {
     await setStatus(id, 'matching');
     const review = await runJob(
-      { url, destination },
+      { url, importSource, destination },
       { ...deps, onProgress: (done, total) => void setProgress(id, done, total) },
     );
     await completeJob(id, review);

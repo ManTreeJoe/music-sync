@@ -23,6 +23,12 @@ reports `N added · M skipped as duplicates · K unmatched`. Writing needs the
 **destination** account connected (the same login as private reads). YouTube
 writes stay off until `YOUTUBE_WRITE_ENABLED=true` (quota-gated).
 
+**Re-import closes the loop.** Under the link box, "Have a JSON export?
+Re-import it" takes a previously exported `.json` file back in as a *source* —
+no link, no login, no credentials. Because the export carries ISRCs, the second
+hop matches as accurately as the first, so you can export from anywhere and
+re-import to any destination (including restoring back to the origin service).
+
 ---
 
 ## Spotify
