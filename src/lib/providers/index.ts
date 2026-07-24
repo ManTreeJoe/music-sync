@@ -6,12 +6,19 @@
 // than a rewrite — the matching engine never imports providers directly.
 
 import type { MusicProvider, Platform } from './types';
+import { SpotifyProvider } from './spotify';
+import { AppleProvider } from './apple';
 
 const registry = new Map<Platform, MusicProvider>();
 
 export function registerProvider(provider: MusicProvider): void {
   registry.set(provider.platform, provider);
 }
+
+// Register the adapters implemented so far. Instantiation is cheap and does no
+// network or env access until a method is called. YouTube lands later.
+registerProvider(new SpotifyProvider());
+registerProvider(new AppleProvider());
 
 export function getProvider(platform: Platform): MusicProvider {
   const provider = registry.get(platform);
