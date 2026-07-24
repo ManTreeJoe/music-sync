@@ -3,9 +3,15 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import type { Platform } from '@/lib/providers/types';
-import { PLATFORM_LABEL } from '@/lib/format';
 
 const DESTINATIONS: Platform[] = ['apple', 'spotify', 'youtube'];
+
+// Short labels for the compact segmented control ("Send it to" disambiguates).
+const DEST_SHORT: Record<Platform, string> = {
+  apple: 'Apple',
+  spotify: 'Spotify',
+  youtube: 'YouTube',
+};
 
 /** sessionStorage key the review screen reads its job from. */
 export const JOB_HANDOFF_KEY = 'pb:job';
@@ -88,11 +94,11 @@ export function LinkForm() {
                 onClick={() => setDest(p)}
                 disabled={busy}
               >
-                {PLATFORM_LABEL[p]}
+                {DEST_SHORT[p]}
               </button>
             ))}
           </div>
-          <span style={{ marginLeft: 'auto' }}>
+          <span className="dest-export">
             <button
               className="btn btn-ghost"
               type="button"

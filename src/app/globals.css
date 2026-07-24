@@ -449,6 +449,9 @@ button {
   background: var(--paper);
   color: var(--void);
 }
+.dest-export {
+  margin-left: auto;
+}
 
 .form-error {
   margin-top: 0.9rem;
@@ -969,6 +972,58 @@ main.review {
   }
   .tiers {
     grid-template-columns: 1fr;
+  }
+
+  /* ---- mobile-friendliness ---- */
+
+  /* smaller monospace so labels stop wrapping */
+  :root {
+    --t-base: 0.9rem;
+    --t-sm: 0.8rem;
+    --t-md: 1rem;
+    --t-lg: 1.4rem;
+  }
+
+  /* the platform list is redundant with the hero eyebrow on a phone */
+  .header-note {
+    display: none;
+  }
+
+  /* keep the panel-head on one row */
+  .panel-head {
+    flex-wrap: wrap;
+    gap: 0.3rem 1rem;
+  }
+
+  /* destination controls stack full-width and stay tappable */
+  .dest-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .seg {
+    width: 100%;
+  }
+  .seg button {
+    flex: 1;
+    white-space: nowrap;
+    padding: 0.7rem 0.5rem;
+    text-align: center;
+  }
+  .dest-export {
+    margin-left: 0;
+  }
+  .dest-export .btn {
+    width: 100%;
+  }
+
+  /* group headers: keep the title, drop the decorative hint, let it wrap */
+  .group > summary {
+    flex-wrap: wrap;
+    row-gap: 0.35rem;
+  }
+  .group .g-hint {
+    display: none;
   }
   /* The signal chain can't fit four nodes on a phone — let it scroll inside its
      own box instead of pushing the page sideways. */
