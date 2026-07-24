@@ -14,6 +14,33 @@ export interface ReviewJob {
   skipped: { local: number; episodes: number; unavailable: number };
 }
 
+/** Lifecycle of a background match job (the write step has its own path). */
+export type JobStatus = 'pending' | 'matching' | 'awaiting_review' | 'failed';
+
+/** Hot progress counter, updated per track as matching runs. */
+export interface JobProgress {
+  done: number;
+  total: number;
+}
+
+/**
+ * The durable record for a background match job, stored in Redis. It carries
+ * enough to reconstruct the review screen once matching finishes, plus the
+ * progress the client streams while it runs.
+ */
+export interface JobRecord {
+  id: string;
+  status: JobStatus;
+  destination: Platform;
+  url: string;
+  progress: JobProgress;
+  /** Present once status === 'awaiting_review'. */
+  review?: ReviewJob;
+  /** Present once status === 'failed'. */
+  error?: { code: JobErrorCode; message: string };
+  createdAt: number;
+}
+
 export type JobErrorCode =
   | 'INVALID_URL'
   | 'SAME_PLATFORM'

@@ -14,9 +14,6 @@ const DEST_SHORT: Record<Platform, string> = {
   youtube: 'YouTube',
 };
 
-/** sessionStorage key the review screen reads its job from. */
-export const JOB_HANDOFF_KEY = 'pb:job';
-
 export function LinkForm() {
   const router = useRouter();
   const [link, setLink] = useState('');
@@ -28,6 +25,8 @@ export function LinkForm() {
     setError(null);
     setBusy(true);
     try {
+      // The match runs in the background; we get a job id back right away and
+      // stream progress on the review screen.
       const res = await fetch('/api/jobs', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -38,8 +37,9 @@ export function LinkForm() {
         setError(data?.error?.message ?? 'Something went wrong.');
         return;
       }
-      sessionStorage.setItem(JOB_HANDOFF_KEY, JSON.stringify(data));
-      router.push(mode === 'export' ? '/review?export=1' : '/review');
+      const q = new URLSearchParams({ job: data.jobId });
+      if (mode === 'export') q.set('export', '1');
+      router.push(`/review?${q.toString()}`);
     } catch {
       setError('Could not reach the server. Check your connection and try again.');
     } finally {

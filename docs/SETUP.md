@@ -114,3 +114,33 @@ already added it above).
 
 Not needed yet (leave blank): `UPSTASH_REDIS_REST_*`, `GOOGLE_CLIENT_*` — those
 come online with caching and YouTube writes.
+
+---
+
+## Background matching (large playlists)
+
+Every convert now runs as a **background job**: pasting a link returns a job id
+immediately and the review screen **streams live progress** (`12 / 100…`) over
+Server-Sent Events while the match runs. Nothing extra is required for this —
+it works out of the box.
+
+Two execution backends sit behind it:
+
+- **In-process (default).** The match runs right after the response is sent,
+  via Next's `after()`. Fine for the friend-group scale; a very large playlist
+  is bounded by the serverless function timeout.
+- **Inngest (optional, for large playlists).** Set `INNGEST_ENABLED=true` and
+  run `npx inngest-cli dev` locally (or wire Inngest Cloud in prod). Public
+  playlist matches are then offloaded to a durable queue that survives past a
+  single function's lifetime. Inngest discovers the functions at
+  `http://localhost:3000/api/inngest`.
+
+Only **public** source reads use Inngest — a private playlist needs your
+connected-account token, which stays in-process and is never put into an
+Inngest event.
+
+**Production note:** in-process `after()` and the background worker run in
+separate invocations, so they hand off job state through **Upstash Redis**.
+Set `UPSTASH_REDIS_REST_*` before deploying, or progress/streaming won't be
+visible across invocations. Local dev uses an in-memory store and needs
+nothing.

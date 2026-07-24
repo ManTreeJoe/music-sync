@@ -1,36 +1,59 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { SiteHeader } from '@/components/SiteHeader';
 import { ReviewScreen } from '@/components/ReviewScreen';
-import { JOB_HANDOFF_KEY } from '@/components/LinkForm';
+import { MatchProgress } from '@/components/MatchProgress';
+import { useJobStream } from '@/lib/useJobStream';
 import { buildSampleJob } from '@/lib/demo/sampleJob';
-import type { ReviewJob } from '@/lib/job/types';
+
+function ReviewBody() {
+  const params = useSearchParams();
+  const jobId = params.get('job');
+
+  // No job id → the demo/sample review (the "see an example" entry point).
+  if (!jobId) {
+    return <ReviewScreen job={buildSampleJob()} />;
+  }
+  return <StreamedReview jobId={jobId} />;
+}
+
+function StreamedReview({ jobId }: { jobId: string }) {
+  const state = useJobStream(jobId);
+
+  if (state.phase === 'ready') {
+    return <ReviewScreen job={state.job} />;
+  }
+  if (state.phase === 'error') {
+    return (
+      <main className="review wrap">
+        <div className="matching">
+          <div className="matching-label mono">Couldn&apos;t finish</div>
+          <p className="matching-hint">{state.message}</p>
+          <a className="btn btn-primary" href="/">
+            ← Start over
+          </a>
+        </div>
+      </main>
+    );
+  }
+  return <MatchProgress progress={state.progress} />;
+}
 
 export default function ReviewPage() {
-  const [job, setJob] = useState<ReviewJob | null>(null);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(JOB_HANDOFF_KEY);
-      setJob(stored ? (JSON.parse(stored) as ReviewJob) : buildSampleJob());
-    } catch {
-      setJob(buildSampleJob());
-    }
-    setReady(true);
-  }, []);
-
   return (
     <>
       <SiteHeader />
-      {ready && job ? (
-        <ReviewScreen job={job} />
-      ) : (
-        <main className="review wrap">
-          <p className="review-loading">Loading review…</p>
-        </main>
-      )}
+      <Suspense
+        fallback={
+          <main className="review wrap">
+            <p className="review-loading">Loading review…</p>
+          </main>
+        }
+      >
+        <ReviewBody />
+      </Suspense>
     </>
   );
 }

@@ -1,11 +1,21 @@
 // app/api/jobs/route.ts
 //
-// POST a source link + destination; get back a fully-resolved review job.
-// Runs on the Node runtime (jsonwebtoken / crypto for the Apple dev token).
+// Kick off a background match. Returns a job id immediately; the client streams
+// progress from /api/jobs/{id}/stream and reads the finished review from
+// /api/jobs/{id}. Two execution backends, same job-store contract:
+//
+//   • Inngest (when INNGEST_ENABLED=true and the source read is public) —
+//     durable, survives long past a single function's lifetime. Best for large
+//     playlists. Background reads are public; no tokens go into the event.
+//   • In-process via after() — runs after the response is sent, using the
+//     caller's session tokens (they never leave the process). Used when the
+//     source needs a user token, or when Inngest isn't configured.
 
-import { NextResponse } from 'next/server';
-import { runJob } from '@/lib/job/runJob';
-import { JobError, type JobErrorCode } from '@/lib/job/types';
+import { NextResponse, after } from 'next/server';
+import { resolveProviderForUrl } from '@/lib/providers';
+import { createJob, newJobId } from '@/lib/job/store';
+import { executeMatchJob } from '@/lib/job/execute';
+import { inngest, EVENTS } from '@/inngest/client';
 import type { Auth, Platform } from '@/lib/providers/types';
 import { getSession } from '@/lib/session';
 import { getValidSpotifyToken } from '@/lib/auth/spotifyOAuth';
@@ -17,20 +27,7 @@ export const dynamic = 'force-dynamic';
 
 const DESTINATIONS: Platform[] = ['spotify', 'apple', 'youtube'];
 
-const STATUS: Record<JobErrorCode, number> = {
-  INVALID_URL: 400,
-  SAME_PLATFORM: 400,
-  PROVIDER_UNAVAILABLE: 501,
-  PLAYLIST_NOT_FOUND: 404,
-  PLAYLIST_PRIVATE: 403,
-  AUTH_REQUIRED: 401,
-  RATE_LIMITED: 429,
-  PLAYLIST_TOO_LARGE: 413,
-  DEST_NOT_WRITABLE: 409,
-  QUOTA_EXCEEDED: 429,
-  PARTIAL_WRITE: 502,
-  PLATFORM_ERROR: 502,
-};
+const inngestEnabled = process.env.INNGEST_ENABLED === 'true';
 
 export async function POST(req: Request) {
   let body: { url?: unknown; destination?: unknown };
@@ -58,17 +55,32 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+  const dest = destination as Platform;
 
-  // If the user has connected an account, use their token so their private
-  // playlists can be read. Public reads still need no login.
+  // Validate the link up front so a doomed job never reaches the store.
+  const parsed = resolveProviderForUrl(url);
+  if (!parsed) {
+    return NextResponse.json(
+      { error: { code: 'INVALID_URL', message: "That doesn't look like a playlist link we recognize." } },
+      { status: 400 },
+    );
+  }
+  const sourcePlatform = parsed.provider.platform;
+  if (sourcePlatform === dest) {
+    return NextResponse.json(
+      { error: { code: 'SAME_PLATFORM', message: 'Source and destination are the same service.' } },
+      { status: 400 },
+    );
+  }
+
+  // Resolve any connected-account tokens so private source playlists can be
+  // read. These stay in-process — never serialized into an Inngest event.
   const session = await getSession();
 
   let spotifyToken: string | null = null;
   if (session.spotify && process.env.SPOTIFY_CLIENT_ID) {
     try {
-      spotifyToken = await getValidSpotifyToken(session, {
-        clientId: process.env.SPOTIFY_CLIENT_ID,
-      });
+      spotifyToken = await getValidSpotifyToken(session, { clientId: process.env.SPOTIFY_CLIENT_ID });
     } catch {
       spotifyToken = null;
     }
@@ -90,28 +102,28 @@ export async function POST(req: Request) {
   await session.save(); // persist any refreshed tokens
 
   const sourceAuthFor = (platform: Platform): Auth => {
-    if (platform === 'spotify' && spotifyToken) {
-      return { kind: 'bearer', token: spotifyToken };
-    }
-    if (platform === 'youtube' && googleToken) {
-      return { kind: 'bearer', token: googleToken };
-    }
+    if (platform === 'spotify' && spotifyToken) return { kind: 'bearer', token: spotifyToken };
+    if (platform === 'youtube' && googleToken) return { kind: 'bearer', token: googleToken };
     if (platform === 'apple' && appleUserToken) {
-      // enables private library reads; getAppleDeveloperToken throws if the
-      // server lacks Apple creds, which runJob maps to PROVIDER_UNAVAILABLE
       return { kind: 'apple', developerToken: getAppleDeveloperToken(), userToken: appleUserToken };
     }
     return { kind: 'none' };
   };
 
-  try {
-    const job = await runJob({ url, destination: destination as Platform }, { sourceAuthFor });
-    return NextResponse.json(job);
-  } catch (e) {
-    const err = e instanceof JobError ? e : new JobError('PLATFORM_ERROR', 'Unexpected error.');
-    return NextResponse.json(
-      { error: { code: err.code, message: err.message } },
-      { status: STATUS[err.code] },
-    );
+  // A private source needs the user's token, which Inngest can't carry — so
+  // route those in-process. Only public reads are eligible for Inngest.
+  const sourceIsPublic = sourceAuthFor(sourcePlatform).kind === 'none';
+
+  const id = newJobId();
+  await createJob({ id, url, destination: dest, total: 0 });
+
+  if (inngestEnabled && sourceIsPublic) {
+    await inngest.send({ name: EVENTS.matchRequested, data: { jobId: id, url, destination: dest } });
+  } else {
+    // Run after the response is sent. Tokens are captured in this closure and
+    // never persisted. Failures are recorded on the job record by executeMatchJob.
+    after(() => executeMatchJob({ id, url, destination: dest, deps: { sourceAuthFor } }));
   }
+
+  return NextResponse.json({ jobId: id }, { status: 202 });
 }
