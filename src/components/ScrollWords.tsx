@@ -78,9 +78,9 @@ export function ScrollWords() {
                 key={s.w}
                 className="sw-word"
                 style={{
-                  transform: `translateY(${dist * 0.72}em) scale(${1 - Math.min(abs * 0.07, 0.22)})`,
-                  filter: `blur(${Math.min(abs * 6, 16)}px)`,
-                  opacity: Math.max(0.12, 1 - abs * 0.52),
+                  transform: `translate(-50%, -50%) translateY(${dist * 0.6}em) scale(${1 - Math.min(abs * 0.07, 0.22)})`,
+                  filter: `blur(${Math.min(abs * 6, 15)}px)`,
+                  opacity: Math.max(0.1, 1 - abs * 0.55),
                   zIndex: STAGES.length - Math.round(abs),
                 }}
               >
