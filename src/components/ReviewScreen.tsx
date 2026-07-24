@@ -6,6 +6,7 @@ import type { ReviewJob } from '@/lib/job/types';
 import { downloadExport } from '@/lib/exportClient';
 import type { ExportFormat } from '@/lib/export';
 import { PLATFORM_LABEL, msToClock, deepSearchUrl } from '@/lib/format';
+import { WritePanel } from './WritePanel';
 
 const CONNECTOR_CLASS: Record<Confidence, string> = {
   high: 'c-high',
@@ -70,6 +71,12 @@ export function ReviewScreen({ job }: { job: ReviewJob }) {
   const skippedTotal =
     job.skipped.local + job.skipped.episodes + job.skipped.unavailable;
 
+  // The destination tracks to write — matched results with the user's picks
+  // applied. Recomputed as they resolve alternatives.
+  const writeTracks = resolvedResults
+    .filter((r) => r.destination)
+    .map((r) => ({ platformId: r.destination!.platformId, isrc: r.destination!.isrc }));
+
   return (
     <main className="review wrap">
       <div className="review-head">
@@ -112,6 +119,13 @@ export function ReviewScreen({ job }: { job: ReviewJob }) {
           transferred and aren&apos;t counted against the match rate.
         </p>
       )}
+
+      <WritePanel
+        destination={job.destinationPlatform}
+        sourceName={job.name}
+        tracks={writeTracks}
+        unmatchedCount={counts.none}
+      />
 
       <Group
         title="Auto-matched"

@@ -17,11 +17,11 @@ the login cookie can be encrypted. YouTube-connect also needs
 key), and its callback `http://localhost:3000/api/auth/google/callback`
 registered in Google Cloud Console.
 
-> Heads up: **writing** the new playlist onto the destination isn't wired yet.
-> So today "Convert" gets you matched results + review + export, not a created
-> Apple/Spotify playlist. Writing reuses this same Spotify login. Everything
-> below is what the read/match flow needs now, with the write-only extras
-> marked **(later)**.
+**Writing works too.** On the review screen, "Send to {destination}" creates a
+new playlist or appends to an existing one (deduping what's already there) and
+reports `N added · M skipped as duplicates · K unmatched`. Writing needs the
+**destination** account connected (the same login as private reads). YouTube
+writes stay off until `YOUTUBE_WRITE_ENABLED=true` (quota-gated).
 
 ---
 

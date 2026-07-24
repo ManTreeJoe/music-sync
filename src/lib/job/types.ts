@@ -23,6 +23,9 @@ export type JobErrorCode =
   | 'AUTH_REQUIRED'
   | 'RATE_LIMITED'
   | 'PLAYLIST_TOO_LARGE'
+  | 'DEST_NOT_WRITABLE'
+  | 'QUOTA_EXCEEDED'
+  | 'PARTIAL_WRITE'
   | 'PLATFORM_ERROR';
 
 export class JobError extends Error {
