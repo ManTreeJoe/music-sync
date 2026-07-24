@@ -210,7 +210,7 @@ button {
 /* ---- hero ------------------------------------------------------------ */
 
 .hero {
-  padding-block: clamp(3rem, 8vw, 6rem) clamp(2.5rem, 6vw, 4.5rem);
+  padding-block: clamp(3rem, 8vw, 6rem) clamp(1rem, 3vw, 2rem);
 }
 
 .eyebrow {
