@@ -183,16 +183,10 @@ button {
   text-decoration: none;
   color: #14110f;
 }
-.brandmark {
-  display: inline-grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 2px solid #14110f;
-  border-radius: 50%;
-  font-family: var(--font-mono-stack);
-  font-size: 1rem;
-  line-height: 1;
+.wordmark .mark {
+  flex: 0 0 auto;
+  /* drives currentColor for the ring + span; the destination node stays red */
+  color: #14110f;
 }
 .wordmark b {
   color: var(--red);
