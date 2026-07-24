@@ -9,6 +9,8 @@ import { JobError, type JobErrorCode } from '@/lib/job/types';
 import type { Auth, Platform } from '@/lib/providers/types';
 import { getSession } from '@/lib/session';
 import { getValidSpotifyToken } from '@/lib/auth/spotifyOAuth';
+import { getValidGoogleToken } from '@/lib/auth/googleOAuth';
+import { getAppleDeveloperToken } from '@/lib/auth/appleToken';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,24 +56,50 @@ export async function POST(req: Request) {
     );
   }
 
-  // If the user has connected Spotify, use their token so private playlists
-  // (owned by them) can be read. Public reads still need no login.
+  // If the user has connected an account, use their token so their private
+  // playlists can be read. Public reads still need no login.
   const session = await getSession();
+
   let spotifyToken: string | null = null;
-  const clientId = process.env.SPOTIFY_CLIENT_ID;
-  if (session.spotify && clientId) {
+  if (session.spotify && process.env.SPOTIFY_CLIENT_ID) {
     try {
-      spotifyToken = await getValidSpotifyToken(session, { clientId });
-      await session.save(); // persist a refreshed token
+      spotifyToken = await getValidSpotifyToken(session, {
+        clientId: process.env.SPOTIFY_CLIENT_ID,
+      });
     } catch {
-      spotifyToken = null; // fall back to public read
+      spotifyToken = null;
     }
   }
 
-  const sourceAuthFor = (platform: Platform): Auth =>
-    platform === 'spotify' && spotifyToken
-      ? { kind: 'bearer', token: spotifyToken }
-      : { kind: 'none' };
+  let googleToken: string | null = null;
+  if (session.google && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    try {
+      googleToken = await getValidGoogleToken(session, {
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      });
+    } catch {
+      googleToken = null;
+    }
+  }
+
+  const appleUserToken = session.apple?.userToken ?? null;
+  await session.save(); // persist any refreshed tokens
+
+  const sourceAuthFor = (platform: Platform): Auth => {
+    if (platform === 'spotify' && spotifyToken) {
+      return { kind: 'bearer', token: spotifyToken };
+    }
+    if (platform === 'youtube' && googleToken) {
+      return { kind: 'bearer', token: googleToken };
+    }
+    if (platform === 'apple' && appleUserToken) {
+      // enables private library reads; getAppleDeveloperToken throws if the
+      // server lacks Apple creds, which runJob maps to PROVIDER_UNAVAILABLE
+      return { kind: 'apple', developerToken: getAppleDeveloperToken(), userToken: appleUserToken };
+    }
+    return { kind: 'none' };
+  };
 
   try {
     const job = await runJob({ url, destination: destination as Platform }, { sourceAuthFor });

@@ -8,9 +8,14 @@ With the keys below in `.env.local`, pasting a **public Spotify link** and
 choosing **Apple Music** gives you: the tracks read, matched (ISRC → fuzzy), the
 **review screen**, and **CSV/JSON/M3U8 export**.
 
-**Private Spotify playlists** also work now — click **"Connect Spotify"** on the
-form to log in (OAuth/PKCE), then paste one of your own private links. This needs
-`SESSION_SECRET` set (any 32+ char string) so the login cookie can be encrypted.
+**Private playlists** work too — under the input, "Private playlists? Connect"
+offers **Spotify**, **Apple**, and **YouTube**. Connecting logs you in
+(Spotify/YouTube via OAuth, Apple via the MusicKit popup) so your own private
+playlists can be read. This needs `SESSION_SECRET` set (any 32+ char string) so
+the login cookie can be encrypted. YouTube-connect also needs
+`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (an OAuth client, not just the API
+key), and its callback `http://localhost:3000/api/auth/google/callback`
+registered in Google Cloud Console.
 
 > Heads up: **writing** the new playlist onto the destination isn't wired yet.
 > So today "Convert" gets you matched results + review + export, not a created

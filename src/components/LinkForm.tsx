@@ -1,8 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { Platform } from '@/lib/providers/types';
+import { Connections } from './Connections';
 
 const DESTINATIONS: Platform[] = ['apple', 'spotify', 'youtube'];
 
@@ -22,17 +23,6 @@ export function LinkForm() {
   const [dest, setDest] = useState<Platform>('apple');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [connected, setConnected] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    fetch('/api/session')
-      .then((r) => r.json())
-      .then((d) => setConnected(Boolean(d.spotify)))
-      .catch(() => setConnected(false));
-    if (new URLSearchParams(window.location.search).get('connect') === 'error') {
-      setError("Couldn't connect to Spotify. Please try again.");
-    }
-  }, []);
 
   async function run(mode: 'convert' | 'export') {
     setError(null);
@@ -56,14 +46,6 @@ export function LinkForm() {
       setBusy(false);
     }
   }
-
-  const connect = () => {
-    window.location.href = `/api/auth/spotify?returnTo=${encodeURIComponent(window.location.pathname)}`;
-  };
-  const disconnect = async () => {
-    await fetch('/api/auth/spotify/logout', { method: 'POST' });
-    setConnected(false);
-  };
 
   return (
     <form
@@ -101,20 +83,7 @@ export function LinkForm() {
           </p>
         )}
 
-        <div className="connect-row">
-          {connected === null ? null : connected ? (
-            <span className="connect-ok">
-              ✓ Spotify connected ·{' '}
-              <button type="button" className="connect-link" onClick={disconnect}>
-                disconnect
-              </button>
-            </span>
-          ) : (
-            <button type="button" className="connect-link" onClick={connect}>
-              Private playlist? Connect Spotify →
-            </button>
-          )}
-        </div>
+        <Connections />
 
         <div className="dest-row">
           <span>Send it to</span>

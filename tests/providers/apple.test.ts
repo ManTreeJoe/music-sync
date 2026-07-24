@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   parseAppleUrl,
   appleSongToTrack,
+  appleLibrarySongToTrack,
   AppleProvider,
   type AppleSong,
+  type AppleLibrarySong,
 } from '../../src/lib/providers/apple';
 import type { Auth } from '../../src/lib/providers/types';
 
@@ -15,8 +17,32 @@ describe('parseAppleUrl', () => {
       parseAppleUrl('https://music.apple.com/us/playlist/late-night/pl.u-abc123'),
     ).toEqual({ playlistId: 'pl.u-abc123' });
   });
+  it('parses a private library playlist URL (p.*)', () => {
+    expect(parseAppleUrl('https://music.apple.com/library/playlist/p.abc-123')).toEqual({
+      playlistId: 'p.abc-123',
+    });
+  });
   it('returns null for a Spotify URL', () => {
     expect(parseAppleUrl('https://open.spotify.com/playlist/37i9dQZF1DX0XUsuxWHRQd')).toBeNull();
+  });
+});
+
+describe('appleLibrarySongToTrack', () => {
+  it('maps a library song, preferring the catalog id', () => {
+    const song: AppleLibrarySong = {
+      id: 'i.abc',
+      type: 'library-songs',
+      attributes: {
+        name: 'Yellow',
+        artistName: 'Coldplay',
+        durationInMillis: 266000,
+        playParams: { catalogId: '1000' },
+      },
+    };
+    const t = appleLibrarySongToTrack(song);
+    expect(t.title).toBe('Yellow');
+    expect(t.platformId).toBe('1000'); // catalog id preferred
+    expect(t.isrcMissingReason).toBe('not_in_response');
   });
 });
 

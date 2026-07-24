@@ -7,17 +7,31 @@
 import { getIronSession, type SessionOptions } from 'iron-session';
 import { cookies } from 'next/headers';
 
-export interface SpotifyTokens {
+export interface OAuthTokens {
   accessToken: string;
   refreshToken: string;
   expiresAt: number; // epoch ms
   userId?: string;
 }
 
+/** Kept for readability at Spotify call sites. */
+export type SpotifyTokens = OAuthTokens;
+
+interface PendingOAuth {
+  verifier: string;
+  state: string;
+  returnTo: string;
+}
+
 export interface SessionData {
-  spotify?: SpotifyTokens;
-  /** Transient PKCE state, only present mid-OAuth. */
-  spotifyOauth?: { verifier: string; state: string; returnTo: string };
+  spotify?: OAuthTokens;
+  spotifyOauth?: PendingOAuth;
+
+  google?: OAuthTokens; // YouTube
+  googleOauth?: PendingOAuth;
+
+  /** Apple Music User Token (obtained client-side via MusicKit JS). */
+  apple?: { userToken: string };
 }
 
 // iron-session requires a >=32-char password. In production SESSION_SECRET must

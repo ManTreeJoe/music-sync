@@ -14,5 +14,7 @@ export async function GET() {
   return NextResponse.json({
     spotify: Boolean(session.spotify),
     spotifyUser: session.spotify?.userId ?? null,
+    youtube: Boolean(session.google),
+    apple: Boolean(session.apple),
   });
 }

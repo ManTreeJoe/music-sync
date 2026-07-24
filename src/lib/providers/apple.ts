@@ -51,11 +51,48 @@ export function appleSongToTrack(s: AppleSong): Track {
   };
 }
 
-/** Pure: parse an Apple Music playlist URL into its catalog id. */
+/** An Apple LIBRARY song (from /me/library) — different shape and IDs. */
+export interface AppleLibrarySong {
+  id: string; // library id (p.*)
+  type: string; // 'library-songs'
+  attributes?: {
+    name: string;
+    artistName?: string;
+    albumName?: string;
+    durationInMillis?: number;
+    playParams?: { catalogId?: string };
+  };
+}
+
+/** Pure: map an Apple library song to a Track. Library songs carry no ISRC;
+ *  prefer the catalog id when present so a later write can target it. */
+export function appleLibrarySongToTrack(s: AppleLibrarySong): Track {
+  const a = s.attributes ?? { name: '' };
+  return {
+    title: a.name,
+    artists: a.artistName ? [a.artistName] : [],
+    album: a.albumName,
+    durationMs: a.durationInMillis,
+    platformId: a.playParams?.catalogId ?? s.id,
+    platform: 'apple',
+    isrcMissingReason: 'not_in_response',
+  };
+}
+
+/**
+ * Pure: parse an Apple Music playlist URL into its id. Handles catalog
+ * playlists (`pl.*`, e.g. .../us/playlist/name/pl.abc) and a user's library
+ * playlists (`p.*`, e.g. .../library/playlist/p.abc).
+ */
 export function parseAppleUrl(url: string): { playlistId: string } | null {
-  const m = url.match(/playlist\/[^/]+\/(pl\.[A-Za-z0-9-]+)/);
+  const m = url.match(/playlist\/(?:[^/]+\/)?((?:pl|p)\.[A-Za-z0-9-]+)/);
   if (m) return { playlistId: m[1] };
   return null;
+}
+
+/** Library playlist ids start with `p.` (catalog ids start with `pl.`). */
+function isLibraryId(id: string): boolean {
+  return id.startsWith('p.') && !id.startsWith('pl.');
 }
 
 export interface AppleDeps {
@@ -94,12 +131,15 @@ export class AppleProvider implements MusicProvider {
   }
 
   async getPlaylist(id: string, auth: Auth): Promise<Playlist> {
+    // A user's private library playlist needs the user token; catalog reads
+    // need only the developer token.
+    const library = isLibraryId(id);
+    const path = library
+      ? `${API}/me/library/playlists/${id}`
+      : `${API}/catalog/${this.storefront}/playlists/${id}`;
     const data = await httpJson<{
       data: { id: string; attributes?: { name: string; description?: { standard?: string }; url?: string } }[];
-    }>(`${API}/catalog/${this.storefront}/playlists/${id}`, {
-      headers: this.headers(auth),
-      fetchImpl: this.fetchImpl,
-    });
+    }>(path, { headers: this.headers(auth, library), fetchImpl: this.fetchImpl });
     const p = data.data?.[0];
     return {
       id,
@@ -107,11 +147,14 @@ export class AppleProvider implements MusicProvider {
       description: p?.attributes?.description?.standard,
       trackCount: 0,
       platform: 'apple',
-      url: p?.attributes?.url ?? `https://music.apple.com/${this.storefront}/playlist/${id}`,
+      url: library
+        ? `https://music.apple.com/library/playlist/${id}`
+        : p?.attributes?.url ?? `https://music.apple.com/${this.storefront}/playlist/${id}`,
     };
   }
 
   async getTracks(id: string, auth: Auth): Promise<Track[]> {
+    if (isLibraryId(id)) return this.getLibraryTracks(id, auth);
     const out: Track[] = [];
     let url: string | null =
       `/catalog/${this.storefront}/playlists/${id}/tracks?limit=100`;
@@ -121,6 +164,21 @@ export class AppleProvider implements MusicProvider {
         fetchImpl: this.fetchImpl,
       });
       out.push(...(page.data ?? []).map(appleSongToTrack));
+      url = page.next ?? null;
+    }
+    return out;
+  }
+
+  /** Read a user's private library playlist (needs the Music User Token). */
+  private async getLibraryTracks(id: string, auth: Auth): Promise<Track[]> {
+    const out: Track[] = [];
+    let url: string | null = `/me/library/playlists/${id}/tracks?limit=100`;
+    while (url) {
+      const page: { data: AppleLibrarySong[]; next?: string } = await httpJson(`${API}${url}`, {
+        headers: this.headers(auth, true),
+        fetchImpl: this.fetchImpl,
+      });
+      out.push(...(page.data ?? []).map(appleLibrarySongToTrack));
       url = page.next ?? null;
     }
     return out;

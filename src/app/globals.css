@@ -460,27 +460,43 @@ button {
 }
 
 .connect-row {
-  margin-top: 1rem;
-  min-height: 1.2em;
+  margin-top: 1.1rem;
+  min-height: 1.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem 0.7rem;
+  flex-wrap: wrap;
+}
+.connect-lead {
   font-size: var(--t-sm);
-}
-.connect-link {
-  background: none;
-  border: 0;
-  padding: 0;
   color: var(--paper-dim);
-  font: inherit;
-  border-bottom: 1px solid var(--line);
 }
-.connect-link:hover {
+.conn-chips {
+  display: inline-flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.conn-chip {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--paper-dim);
+  border-radius: var(--pill);
+  padding: 0.34rem 0.85rem;
+  font-family: var(--font-mono-stack);
+  font-size: var(--t-xs);
+  letter-spacing: 0.02em;
+}
+.conn-chip:hover {
+  border-color: var(--paper-dim);
   color: var(--paper);
-  border-color: var(--paper);
 }
-.connect-ok {
-  color: var(--paper-dim);
+.conn-chip.on {
+  border-color: var(--red);
+  color: var(--red);
 }
-.connect-ok .connect-link {
-  color: var(--paper-faint);
+.connect-msg {
+  font-size: var(--t-xs);
+  color: var(--red);
 }
 
 .review-loading {
