@@ -1,0 +1,241 @@
+{
+  "note": "Hand-verified matching fixtures. Each case injects the candidate lists a provider WOULD have returned, so the engine is exercised with zero network. Build/extend this before tuning thresholds — otherwise you tune to your own music taste.",
+  "cases": [
+    {
+      "id": "classical-performer-ambiguity",
+      "hardCase": 1,
+      "note": "Composer in the title/artist field, performer alongside. ISRC makes it unambiguous — Tier 1.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Piano Concerto No. 21 in C Major, K. 467: II. Andante",
+        "artists": ["Wolfgang Amadeus Mozart", "Vladimir Ashkenazy"],
+        "isrc": "GBAAA7300123",
+        "durationMs": 415000,
+        "platformId": "spotify:track:mozart467"
+      },
+      "isrcCandidates": [
+        {
+          "platform": "apple",
+          "title": "Piano Concerto No. 21 in C Major, K. 467: II. Andante",
+          "artists": ["Wolfgang Amadeus Mozart", "Vladimir Ashkenazy"],
+          "isrc": "GBAAA7300123",
+          "durationMs": 415500,
+          "platformId": "apple:1440899723"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "high", "tier": 1 }
+    },
+    {
+      "id": "live-must-not-match-studio",
+      "hardCase": 2,
+      "note": "Only a live version is available. It must be rejected, not matched — a wrong track is worse than a missing one.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Yellow",
+        "artists": ["Coldplay"],
+        "durationMs": 269000,
+        "platformId": "spotify:track:yellow"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Yellow (Live at Glastonbury)",
+          "artists": ["Coldplay"],
+          "durationMs": 281000,
+          "platformId": "apple:live-yellow"
+        }
+      ],
+      "expect": { "matched": false, "confidence": "none", "tier": 3 }
+    },
+    {
+      "id": "remaster-matches-original",
+      "hardCase": 3,
+      "note": "The remaster shares an ISRC with its catalog entry on the other platform — Tier 1 high. Remaster-title stripping itself is covered in normalize.test.ts.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Bohemian Rhapsody - Remastered 2011",
+        "artists": ["Queen"],
+        "isrc": "GBUM71029604",
+        "durationMs": 354000,
+        "platformId": "spotify:track:bohemian"
+      },
+      "isrcCandidates": [
+        {
+          "platform": "apple",
+          "title": "Bohemian Rhapsody (2011 Remaster)",
+          "artists": ["Queen"],
+          "isrc": "GBUM71029604",
+          "durationMs": 354320,
+          "platformId": "apple:bohemian-remaster"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "high", "tier": 1 }
+    },
+    {
+      "id": "featured-artist-formatted-differently",
+      "hardCase": 4,
+      "note": "Source has '(feat. X)' in the title; candidate has X in the artists array and a clean title. Tier 2 fuzzy should still match high.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Pray for Me (feat. Kendrick Lamar)",
+        "artists": ["The Weeknd", "Kendrick Lamar"],
+        "durationMs": 231000,
+        "platformId": "spotify:track:prayforme"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Pray for Me",
+          "artists": ["The Weeknd", "Kendrick Lamar"],
+          "durationMs": 231500,
+          "platformId": "apple:prayforme"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.9 }
+    },
+    {
+      "id": "absent-from-catalog",
+      "hardCase": 5,
+      "note": "Track exists on the source but not the destination catalog. Must return unmatched, never a wrong match.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "A Very Obscure Bedroom Demo Nobody Uploaded",
+        "artists": ["Some Unknown Artist"],
+        "durationMs": 142000,
+        "platformId": "spotify:track:obscure"
+      },
+      "searchCandidates": [],
+      "expect": { "matched": false, "confidence": "none", "tier": 3 }
+    },
+    {
+      "id": "messy-youtube-title",
+      "hardCase": 6,
+      "note": "Source came from YouTube with a noisy title. Noise-stripping should recover the match; ceiling is 'medium' because YouTube has no ISRC.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "youtube",
+        "title": "Bohemian Rhapsody (Official Video) [HD]",
+        "artists": ["Queen"],
+        "durationMs": 355000,
+        "platformId": "yt:fJ9rUzIMcZQ"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Bohemian Rhapsody",
+          "artists": ["Queen"],
+          "durationMs": 354000,
+          "platformId": "apple:bohemian"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.9 }
+    },
+    {
+      "id": "non-latin-script",
+      "hardCase": 7,
+      "note": "Hangul title. Catches ASCII-stripping bugs — if normalization drops non-Latin characters the title becomes empty and nothing matches.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "봄날",
+        "artists": ["BTS"],
+        "durationMs": 285000,
+        "platformId": "spotify:track:springday"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "봄날",
+          "artists": ["방탄소년단 (BTS)"],
+          "durationMs": 285000,
+          "platformId": "apple:springday"
+        },
+        {
+          "platform": "apple",
+          "title": "봄날",
+          "artists": ["BTS"],
+          "durationMs": 285000,
+          "platformId": "apple:springday-bts"
+        }
+      ],
+      "expect": { "matched": true, "confidence": "medium", "tier": 2, "minScore": 0.9 }
+    },
+    {
+      "id": "karaoke-trap",
+      "hardCase": 8,
+      "note": "A 'Made Famous By' karaoke result is listed first. It must be filtered out so the real track wins, even though its title similarity is high.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Someone Like You",
+        "artists": ["Adele"],
+        "durationMs": 285000,
+        "platformId": "spotify:track:someonelikeyou"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Someone Like You (Made Famous by Adele)",
+          "artists": ["Ameritz Karaoke Band"],
+          "durationMs": 284000,
+          "platformId": "apple:karaoke-someone"
+        },
+        {
+          "platform": "apple",
+          "title": "Someone Like You",
+          "artists": ["Adele"],
+          "durationMs": 285000,
+          "platformId": "apple:someonelikeyou"
+        }
+      ],
+      "expect": {
+        "matched": true,
+        "confidence": "medium",
+        "tier": 2,
+        "minScore": 0.9,
+        "destinationPlatformId": "apple:someonelikeyou"
+      }
+    },
+    {
+      "id": "same-title-different-artists",
+      "hardCase": 9,
+      "note": "Multiple songs called 'Alive'. Artist and duration must disambiguate; the wrong artist's version must not be chosen.",
+      "destinationPlatform": "apple",
+      "source": {
+        "platform": "spotify",
+        "title": "Alive",
+        "artists": ["Sia"],
+        "durationMs": 244000,
+        "platformId": "spotify:track:alive-sia"
+      },
+      "searchCandidates": [
+        {
+          "platform": "apple",
+          "title": "Alive",
+          "artists": ["Pearl Jam"],
+          "durationMs": 341000,
+          "platformId": "apple:alive-pearljam"
+        },
+        {
+          "platform": "apple",
+          "title": "Alive",
+          "artists": ["Sia"],
+          "durationMs": 244000,
+          "platformId": "apple:alive-sia"
+        }
+      ],
+      "expect": {
+        "matched": true,
+        "confidence": "medium",
+        "tier": 2,
+        "minScore": 0.9,
+        "destinationPlatformId": "apple:alive-sia"
+      }
+    }
+  ]
+}
