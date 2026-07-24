@@ -19,6 +19,7 @@ import type {
   JobRecord,
   JobStatus,
   ReviewJob,
+  WritePartial,
   WriteSummary,
 } from './types';
 import type { Platform } from '../providers/types';
@@ -103,4 +104,13 @@ export async function completeWriteJob(id: string, writeResult: WriteSummary): P
 
 export function failJob(id: string, error: { code: JobErrorCode; message: string }): Promise<void> {
   return patch(id, { status: 'failed', error });
+}
+
+/** A write that stopped partway: failed, but with a resume plan attached. */
+export function partialWriteJob(
+  id: string,
+  error: { code: JobErrorCode; message: string },
+  partial: WritePartial,
+): Promise<void> {
+  return patch(id, { status: 'failed', error, partial });
 }

@@ -6,9 +6,23 @@
 // injectable so this is testable without network.
 
 import { getProvider as registryGetProvider } from '../providers';
-import { JobError } from './types';
+import { JobError, type WritePartial } from './types';
 import { toJobError } from './errors';
 import type { Auth, MusicProvider, Platform } from '../providers/types';
+
+/**
+ * Thrown when addTracks fails after some tracks already landed (or after a new
+ * playlist was created). Carries the resume plan so the caller never re-adds
+ * what already made it.
+ */
+export class PartialWriteError extends JobError {
+  partial: WritePartial;
+  constructor(message: string, partial: WritePartial) {
+    super('PARTIAL_WRITE', message);
+    this.name = 'PartialWriteError';
+    this.partial = partial;
+  }
+}
 
 export interface WriteTrackRef {
   platformId: string;
@@ -106,14 +120,44 @@ export async function runWrite(input: WriteInput, deps: RunWriteDeps): Promise<W
     }
 
     const total = incoming.length;
+    const createdNew = input.mode === 'create';
     deps.onProgress?.(0, total);
+    let addedSoFar = 0;
     if (total > 0) {
-      await provider.addTracks(
-        targetId!,
-        incoming.map((t) => t.platformId),
-        deps.auth,
-        (added) => deps.onProgress?.(added, total),
-      );
+      try {
+        await provider.addTracks(
+          targetId!,
+          incoming.map((t) => t.platformId),
+          deps.auth,
+          (added) => {
+            addedSoFar = added;
+            deps.onProgress?.(added, total);
+          },
+        );
+      } catch (e) {
+        // Some tracks landed (or we already created the playlist). Don't lose
+        // that — hand back a resume plan for the tracks that didn't make it.
+        // Only a create-mode failure with nothing added still counts as partial
+        // (an empty new playlist exists); an append that added nothing is a
+        // clean failure that's safe to retry whole.
+        if (addedSoFar > 0 || createdNew) {
+          if (input.destination === 'youtube' && deps.charge && addedSoFar > 0) {
+            await deps.charge(provider.estimateWriteCost(addedSoFar));
+          }
+          throw new PartialWriteError(
+            `Added ${addedSoFar} of ${total} before the write was interrupted.`,
+            {
+              playlistId: targetId!,
+              playlistUrl: playlistUrl || playlistUrlFor(input.destination, targetId!),
+              added: addedSoFar,
+              remaining: incoming.slice(addedSoFar),
+              skippedDupes,
+              unmatched: input.unmatchedCount ?? 0,
+            },
+          );
+        }
+        throw e;
+      }
     }
 
     if (input.destination === 'youtube' && deps.charge) {

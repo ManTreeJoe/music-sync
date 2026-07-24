@@ -5,6 +5,7 @@ import type { Platform } from '@/lib/providers/types';
 import { PLATFORM_LABEL } from '@/lib/format';
 import { redirectConnect, connectApple } from '@/lib/connectClient';
 import type { WriteTrackRef } from '@/lib/job/write';
+import type { WritePartial } from '@/lib/job/types';
 import { useJobStream } from '@/lib/useJobStream';
 
 interface WritablePlaylist {
@@ -33,6 +34,7 @@ export function WritePanel({
   const [busy, setBusy] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resume, setResume] = useState<WritePartial | null>(null);
   // Stream the background write once it's kicked off.
   const stream = useJobStream(jobId);
   const result = stream.phase === 'ready' ? stream.record.writeResult ?? null : null;
@@ -82,37 +84,35 @@ export function WritePanel({
     }
   };
 
-  // Surface a background-write failure and re-enable the button (a retry with
-  // the same idempotency key starts fresh, since the failed job is cleared).
+  // React to a finished stream: a clean failure re-enables the button; a
+  // PARTIAL_WRITE surfaces the resume plan instead of a dead-end error.
   useEffect(() => {
-    if (stream.phase === 'error') {
+    if (stream.phase !== 'error') return;
+    setJobId(null);
+    if (stream.record?.partial) {
+      setResume(stream.record.partial);
+    } else {
       setError(stream.message);
-      setJobId(null);
     }
   }, [stream]);
 
-  const write = async () => {
+  // POST a write and hand off to the stream. `body` carries the mode-specific
+  // fields; `key` is the idempotency key for this attempt.
+  const post = async (body: Record<string, unknown>, key: string) => {
     setError(null);
     setBusy(true);
     try {
       const res = await fetch('/api/write', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          destination,
-          mode,
-          name: mode === 'create' ? name : undefined,
-          playlistId: mode === 'append' ? selected : undefined,
-          tracks,
-          unmatchedCount,
-          idempotencyKey,
-        }),
+        body: JSON.stringify({ destination, unmatchedCount, idempotencyKey: key, ...body }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data?.error?.message ?? 'Write failed.');
         return;
       }
+      setResume(null);
       setJobId(data.jobId); // stream takes over from here
     } catch {
       setError('Could not reach the server.');
@@ -120,6 +120,25 @@ export function WritePanel({
       setBusy(false);
     }
   };
+
+  const write = () =>
+    post(
+      {
+        mode,
+        name: mode === 'create' ? name : undefined,
+        playlistId: mode === 'append' ? selected : undefined,
+        tracks,
+      },
+      idempotencyKey,
+    );
+
+  // Finish an interrupted write by appending only what didn't make it, to the
+  // playlist that already exists. Append-dedup guards against re-adds.
+  const resumeWrite = (p: WritePartial) =>
+    post(
+      { mode: 'append', playlistId: p.playlistId, tracks: p.remaining, unmatchedCount: p.unmatched },
+      `${idempotencyKey}:resume`,
+    );
 
   return (
     <section className="write-panel">
@@ -141,6 +160,27 @@ export function WritePanel({
         </div>
       ) : writing ? (
         <WriteProgress done={stream.progress.done} total={stream.progress.total} label={label} />
+      ) : resume ? (
+        <div className="wp-resume">
+          <p className="wp-resume-line">
+            The write was interrupted after <b>{resume.added}</b> track
+            {resume.added === 1 ? '' : 's'}. <b>{resume.remaining.length}</b> still to add —
+            we won&apos;t re-add what already made it.
+          </p>
+          <div className="wp-resume-actions">
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={() => void resumeWrite(resume)}
+              disabled={busy}
+            >
+              {busy ? 'Resuming…' : `Resume — add ${resume.remaining.length} remaining →`}
+            </button>
+            <a className="btn btn-ghost" href={resume.playlistUrl} target="_blank" rel="noreferrer">
+              Open playlist ↗
+            </a>
+          </div>
+        </div>
       ) : connected === null ? null : !connected ? (
         <div className="wp-connect">
           <p>Connect {label} to write the playlist.</p>

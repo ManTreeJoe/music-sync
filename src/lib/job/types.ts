@@ -46,6 +46,20 @@ export interface WriteSummary {
 }
 
 /**
+ * A write that failed partway. Carries exactly what to do to finish: append the
+ * `remaining` tracks to the playlist that already exists (`playlistId`). Never
+ * retry the whole write — that duplicates the tracks that already made it.
+ */
+export interface WritePartial {
+  playlistId: string;
+  playlistUrl: string;
+  added: number;
+  remaining: Array<{ platformId: string; isrc?: string }>;
+  skippedDupes: number;
+  unmatched: number;
+}
+
+/**
  * The durable record for a background job, stored in Redis. It carries enough
  * to render the result once the job finishes, plus the progress the client
  * streams while it runs. Only one of `review` / `writeResult` is set, per kind.
@@ -61,6 +75,8 @@ export interface JobRecord {
   review?: ReviewJob;
   /** Present once a write reaches complete. */
   writeResult?: WriteSummary;
+  /** Present when a write failed partway (error.code === 'PARTIAL_WRITE'). */
+  partial?: WritePartial;
   /** Present once status === 'failed'. */
   error?: { code: JobErrorCode; message: string };
   createdAt: number;

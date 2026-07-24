@@ -7,7 +7,7 @@ export type JobStreamState =
   | { phase: 'connecting'; progress: JobProgress }
   | { phase: 'running'; progress: JobProgress }
   | { phase: 'ready'; progress: JobProgress; record: JobRecord }
-  | { phase: 'error'; progress: JobProgress; message: string };
+  | { phase: 'error'; progress: JobProgress; message: string; record?: JobRecord };
 
 /**
  * Subscribe to a background job (match or write): stream progress over SSE,
@@ -37,7 +37,12 @@ export function useJobStream(jobId: string | null): JobStreamState {
         if (data.status === 'awaiting_review' || data.status === 'complete') {
           setState((s) => ({ phase: 'ready', progress: s.progress, record: data }));
         } else if (data.status === 'failed') {
-          setState((s) => ({ phase: 'error', progress: s.progress, message: data.error?.message ?? 'Job failed.' }));
+          setState((s) => ({
+            phase: 'error',
+            progress: s.progress,
+            message: data.error?.message ?? 'Job failed.',
+            record: data, // carries `partial` for a resumable write
+          }));
         }
       } catch {
         if (!done) setState((s) => ({ phase: 'error', progress: s.progress, message: 'Lost the connection.' }));
@@ -56,15 +61,10 @@ export function useJobStream(jobId: string | null): JobStreamState {
     });
     es.addEventListener('error', (e) => {
       // Two cases: our explicit `error` event (has data), or a transport drop.
-      const data = (e as MessageEvent).data;
-      if (data) {
-        es.close();
-        const parsed = JSON.parse(data) as { message?: string };
-        setState((s) => ({ phase: 'error', progress: s.progress, message: parsed.message ?? 'Job failed.' }));
-      } else {
-        // Transport hiccup — poll once for a terminal state instead of hanging.
-        void loadRecord();
-      }
+      // Either way, fetch the full record so a resumable write's `partial`
+      // payload is available — the SSE event only carries code + message.
+      if ((e as MessageEvent).data) es.close();
+      void loadRecord();
     });
 
     return () => {

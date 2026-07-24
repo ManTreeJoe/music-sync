@@ -6,8 +6,8 @@
 // after()), never on Inngest. Progress streams to the hot counter as batches
 // land; failures are recorded on the record rather than thrown.
 
-import { runWrite, type WriteInput, type RunWriteDeps } from './write';
-import { setStatus, setProgress, completeWriteJob, failJob } from './store';
+import { runWrite, PartialWriteError, type WriteInput, type RunWriteDeps } from './write';
+import { setStatus, setProgress, completeWriteJob, failJob, partialWriteJob } from './store';
 import { toJobError } from './errors';
 import { JobError } from './types';
 
@@ -26,6 +26,12 @@ export async function executeWriteJob({ id, input, deps }: ExecuteWriteInput): P
     });
     await completeWriteJob(id, result);
   } catch (e) {
+    if (e instanceof PartialWriteError) {
+      // Record what landed + how to finish, so the UI can offer "resume".
+      await setProgress(id, e.partial.added, e.partial.added + e.partial.remaining.length);
+      await partialWriteJob(id, { code: e.code, message: e.message }, e.partial);
+      return;
+    }
     const err = e instanceof JobError ? e : toJobError(e);
     await failJob(id, { code: err.code, message: err.message });
   }

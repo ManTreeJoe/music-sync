@@ -805,6 +805,29 @@ main.review {
   text-transform: uppercase;
   color: var(--paper-dim);
 }
+.wp-resume {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--gold-soft);
+  border-radius: var(--pill);
+  background: var(--gold-soft);
+}
+.wp-resume-line {
+  margin: 0;
+  font-size: var(--t-sm);
+  color: var(--paper);
+}
+.wp-resume-line b {
+  color: var(--gold);
+}
+.wp-resume-actions {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
 .skip-note .mono {
   color: var(--paper);
 }

@@ -78,4 +78,35 @@ describe('executeWriteJob', () => {
     expect(job?.status).toBe('failed');
     expect(job?.error?.code).toBe('DEST_NOT_WRITABLE');
   });
+
+  it('stores a resume plan when the write fails partway', async () => {
+    const id = newJobId();
+    await createJob({ id, kind: 'write', url: '', destination: 'apple', total: 4 });
+
+    // addTracks lands 2 of 4, then throws.
+    class HalfDest extends FakeDest {
+      async addTracks(_id: string, ids: string[], _auth: Auth, onProgress?: (n: number) => void) {
+        onProgress?.(2);
+        throw new Error('interrupted');
+      }
+    }
+
+    await executeWriteJob({
+      id,
+      input: {
+        destination: 'apple',
+        mode: 'create',
+        name: 'Mix',
+        tracks: [{ platformId: 'a' }, { platformId: 'b' }, { platformId: 'c' }, { platformId: 'd' }],
+      },
+      deps: { auth, getProvider: () => new HalfDest() },
+    });
+
+    const job = await getJob(id);
+    expect(job?.status).toBe('failed');
+    expect(job?.error?.code).toBe('PARTIAL_WRITE');
+    expect(job?.partial?.added).toBe(2);
+    expect(job?.partial?.remaining.map((t) => t.platformId)).toEqual(['c', 'd']);
+    expect(job?.progress).toEqual({ done: 2, total: 4 });
+  });
 });

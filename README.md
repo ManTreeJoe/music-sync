@@ -97,6 +97,8 @@ a read-layer concern covered in `tests/matching/spotifyItems.test.ts`.
   `YOUTUBE_WRITE_ENABLED`.
 - Redis cache (ISRC/text), sliding-window rate limiters, YouTube quota
   accounting, write idempotency.
+- `PARTIAL_WRITE` recovery — a write interrupted mid-batch hands back a resume
+  plan (which tracks landed, which remain) and the UI appends only the rest.
 - Export (CSV/JSON/M3U8) and the review UI.
 
 Configuration lives in [`.env.example`](./.env.example); setup steps in
@@ -105,7 +107,6 @@ Configuration lives in [`.env.example`](./.env.example); setup steps in
 
 ## Not yet built
 
-- `PARTIAL_WRITE` recovery (resume a write that dies mid-batch).
 - v2 linked-playlist sync (needs Postgres — deliberately out of v1 scope).
 
 ## Hard rules from the brief
