@@ -2,67 +2,83 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-// The transfer flow as a Send-style scroll section: big blurred red words
-// stacked and cycled by scroll, with a dot-matrix caption crossing THROUGH the
-// centre (over the sharp word), scrambling as it changes.
+// The transfer flow as a Send-style AUTO-ROTATING word cycle: big red words that
+// step through the stack on a timer, with a dot-matrix caption crossing the
+// centre (over the sharp word), scrambling as it changes. Not scroll-driven.
 const STAGES = [
   { w: 'Source', c: 'paste a public link' },
   { w: 'Match', c: 'ISRC first, then a tuned fuzzy pass' },
   { w: 'Destination', c: 'a new playlist — your final call' },
   { w: 'Export', c: 'CSV · JSON · M3U8, at any point' },
 ];
-
+const N = STAGES.length;
+const STEP_MS = 1500; // time held on each word
 const SCRAMBLE = '▪▫—/#*<>[]';
 
+/** Signed offset of word i from the continuous phase, wrapped to (-N/2, N/2]. */
+function wrappedOffset(i: number, phase: number): number {
+  let off = (((i - phase) % N) + N) % N; // 0..N
+  if (off > N / 2) off -= N;
+  return off;
+}
+
 export function ScrollWords() {
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const idxRef = useRef(0);
-  const [progress, setProgress] = useState(0); // fractional 0..n-1 (drives motion)
-  const [wordIndex, setWordIndex] = useState(0); // stable index (drives caption)
+  const sectionRef = useRef<HTMLElement>(null);
+  const phaseRef = useRef(0);
+  const targetRef = useRef(0);
+  const [phase, setPhase] = useState(0);
   const [reduced, setReduced] = useState(false);
   const [caption, setCaption] = useState(STAGES[0].c);
 
+  const activeIndex = ((Math.round(phase) % N) + N) % N;
+
+  // Auto-rotate: step the target every STEP_MS, ease the phase toward it each
+  // frame. Paused while the section is off-screen.
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setReduced(true);
       return;
     }
+    const el = sectionRef.current;
     let raf = 0;
-    const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const el = wrapRef.current;
-        if (!el) return;
-        const total = el.offsetHeight - window.innerHeight;
-        const scrolled = -el.getBoundingClientRect().top;
-        const p = total > 0 ? Math.min(1, Math.max(0, scrolled / total)) : 0;
-        const prog = p * (STAGES.length - 1);
-        setProgress(prog);
+    let interval = 0;
+    let running = false;
 
-        // Hysteresis: only switch words once clearly past the midpoint (0.6),
-        // so jitter around the boundary can't flip-flop the caption.
-        let idx = idxRef.current;
-        while (idx < STAGES.length - 1 && prog > idx + 0.6) idx++;
-        while (idx > 0 && prog < idx - 0.6) idx--;
-        if (idx !== idxRef.current) {
-          idxRef.current = idx;
-          setWordIndex(idx);
-        }
-      });
+    const tick = () => {
+      const diff = targetRef.current - phaseRef.current;
+      phaseRef.current += diff * 0.14;
+      if (Math.abs(diff) < 0.0004) phaseRef.current = targetRef.current;
+      setPhase(phaseRef.current);
+      raf = requestAnimationFrame(tick);
     };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-    return () => {
+    const start = () => {
+      if (running) return;
+      running = true;
+      raf = requestAnimationFrame(tick);
+      interval = window.setInterval(() => {
+        targetRef.current += 1;
+      }, STEP_MS);
+    };
+    const stop = () => {
+      running = false;
       cancelAnimationFrame(raf);
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
+      clearInterval(interval);
+    };
+
+    const io = new IntersectionObserver(
+      (entries) => (entries[0].isIntersecting ? start() : stop()),
+      { threshold: 0.2 },
+    );
+    if (el) io.observe(el);
+    return () => {
+      stop();
+      io.disconnect();
     };
   }, []);
 
-  // Scramble the caption in when the settled word changes (dot-matrix flip).
+  // Scramble the caption in when the active word changes (dot-matrix flip).
   useEffect(() => {
-    const target = STAGES[wordIndex]?.c ?? '';
+    const target = STAGES[activeIndex]?.c ?? '';
     if (reduced) {
       setCaption(target);
       return;
@@ -88,9 +104,9 @@ export function ScrollWords() {
       }
     }, 32);
     return () => clearInterval(id);
-  }, [wordIndex, reduced]);
+  }, [activeIndex, reduced]);
 
-  // Reduced motion: a plain readable list.
+  // Reduced motion: a plain readable list, no animation.
   if (reduced) {
     return (
       <section className="sw-static wrap" aria-label="How a transfer flows">
@@ -105,26 +121,22 @@ export function ScrollWords() {
   }
 
   return (
-    <section
-      className="scroll-words"
-      ref={wrapRef}
-      style={{ height: `${STAGES.length * 58}vh` }}
-      aria-label="How a transfer flows"
-    >
+    <section className="scroll-words" ref={sectionRef} aria-label="How a transfer flows">
       <div className="sw-stage">
+        <div className="sw-glow" aria-hidden="true" />
         <div className="sw-words" aria-hidden="true">
           {STAGES.map((s, i) => {
-            const dist = i - progress;
-            const abs = Math.abs(dist);
+            const off = wrappedOffset(i, phase);
+            const abs = Math.abs(off);
             return (
               <div
                 key={s.w}
                 className="sw-word"
                 style={{
-                  transform: `translate(-50%, -50%) translateY(${dist * 0.6}em) scale(${1 - Math.min(abs * 0.07, 0.22)})`,
+                  transform: `translate(-50%, -50%) translateY(${off * 0.6}em) scale(${1 - Math.min(abs * 0.07, 0.22)})`,
                   filter: `blur(${Math.min(abs * 3.5, 9)}px)`,
                   opacity: Math.max(0.06, 1 - abs * 0.72),
-                  zIndex: STAGES.length - Math.round(abs),
+                  zIndex: N - Math.round(abs),
                 }}
               >
                 {s.w}
@@ -135,7 +147,7 @@ export function ScrollWords() {
         {/* caption crosses the centre, over the sharp word */}
         <p className="sw-caption">{caption}</p>
         <span className="sw-index">
-          {String(wordIndex + 1).padStart(2, '0')} / {String(STAGES.length).padStart(2, '0')}
+          {String(activeIndex + 1).padStart(2, '0')} / {String(N).padStart(2, '0')}
         </span>
       </div>
     </section>

@@ -851,13 +851,34 @@ main.review {
 
 .scroll-words {
   position: relative;
+  height: clamp(26rem, 78vh, 44rem);
+  overflow: hidden;
 }
 .sw-stage {
-  position: sticky;
-  top: 0;
-  height: 100vh;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   text-align: center;
+}
+/* a soft light circle around the words that fades into the background; the
+   page's film-grain overlay sits on top, so it reads as grain dissolving out */
+.sw-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(150vw, 78vmin);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    rgba(232, 20, 12, 0.2) 0%,
+    rgba(232, 20, 12, 0.08) 32%,
+    rgba(232, 20, 12, 0) 66%
+  );
+  filter: blur(10px);
 }
 /* zero-height anchor centered in the stage; words center on its midpoint */
 .sw-words {
