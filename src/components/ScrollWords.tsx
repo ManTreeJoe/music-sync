@@ -16,11 +16,11 @@ const SCRAMBLE = '▪▫—/#*<>[]';
 
 export function ScrollWords() {
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [progress, setProgress] = useState(0); // fractional 0..n-1
+  const idxRef = useRef(0);
+  const [progress, setProgress] = useState(0); // fractional 0..n-1 (drives motion)
+  const [wordIndex, setWordIndex] = useState(0); // stable index (drives caption)
   const [reduced, setReduced] = useState(false);
   const [caption, setCaption] = useState(STAGES[0].c);
-
-  const activeIndex = Math.round(progress);
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -36,7 +36,18 @@ export function ScrollWords() {
         const total = el.offsetHeight - window.innerHeight;
         const scrolled = -el.getBoundingClientRect().top;
         const p = total > 0 ? Math.min(1, Math.max(0, scrolled / total)) : 0;
-        setProgress(p * (STAGES.length - 1));
+        const prog = p * (STAGES.length - 1);
+        setProgress(prog);
+
+        // Hysteresis: only switch words once clearly past the midpoint (0.6),
+        // so jitter around the boundary can't flip-flop the caption.
+        let idx = idxRef.current;
+        while (idx < STAGES.length - 1 && prog > idx + 0.6) idx++;
+        while (idx > 0 && prog < idx - 0.6) idx--;
+        if (idx !== idxRef.current) {
+          idxRef.current = idx;
+          setWordIndex(idx);
+        }
       });
     };
     onScroll();
@@ -49,34 +60,35 @@ export function ScrollWords() {
     };
   }, []);
 
-  // Scramble the caption in when the active word changes (dot-matrix flip).
+  // Scramble the caption in when the settled word changes (dot-matrix flip).
   useEffect(() => {
+    const target = STAGES[wordIndex]?.c ?? '';
     if (reduced) {
-      setCaption(STAGES[activeIndex]?.c ?? '');
+      setCaption(target);
       return;
     }
-    const target = STAGES[activeIndex]?.c ?? '';
     const steps = 9;
     let frame = 0;
     const id = setInterval(() => {
       frame++;
       const revealed = Math.floor((frame / steps) * target.length);
-      const out = target
-        .split('')
-        .map((ch, i) =>
-          ch === ' ' || i < revealed
-            ? ch
-            : SCRAMBLE[Math.floor(Math.random() * SCRAMBLE.length)],
-        )
-        .join('');
-      setCaption(out);
+      setCaption(
+        target
+          .split('')
+          .map((ch, i) =>
+            ch === ' ' || i < revealed
+              ? ch
+              : SCRAMBLE[Math.floor(Math.random() * SCRAMBLE.length)],
+          )
+          .join(''),
+      );
       if (frame >= steps) {
         clearInterval(id);
         setCaption(target);
       }
     }, 32);
     return () => clearInterval(id);
-  }, [activeIndex, reduced]);
+  }, [wordIndex, reduced]);
 
   // Reduced motion: a plain readable list.
   if (reduced) {
@@ -109,9 +121,9 @@ export function ScrollWords() {
                 key={s.w}
                 className="sw-word"
                 style={{
-                  transform: `translate(-50%, -50%) translateY(${dist * 0.6}em) scale(${1 - Math.min(abs * 0.07, 0.22)})`,
-                  filter: `blur(${Math.min(abs * 6, 15)}px)`,
-                  opacity: Math.max(0.1, 1 - abs * 0.55),
+                  transform: `translate(-50%, -50%) translateY(${dist * 0.72}em) scale(${1 - Math.min(abs * 0.06, 0.2)})`,
+                  filter: `blur(${Math.min(abs * 4.5, 12)}px)`,
+                  opacity: Math.max(0.3, 1 - abs * 0.4),
                   zIndex: STAGES.length - Math.round(abs),
                 }}
               >
@@ -123,7 +135,7 @@ export function ScrollWords() {
         {/* caption crosses the centre, over the sharp word */}
         <p className="sw-caption">{caption}</p>
         <span className="sw-index">
-          {String(activeIndex + 1).padStart(2, '0')} / {String(STAGES.length).padStart(2, '0')}
+          {String(wordIndex + 1).padStart(2, '0')} / {String(STAGES.length).padStart(2, '0')}
         </span>
       </div>
     </section>
