@@ -1,19 +1,20 @@
 import type { Metadata } from 'next';
-import { Bricolage_Grotesque, Inter, JetBrains_Mono } from 'next/font/google';
+import { Anton, Archivo, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
-// Display: characterful, used with restraint for headings and the wordmark.
-const display = Bricolage_Grotesque({
+// Display: ultra-condensed heavy caps — the stadium-poster voice.
+const display = Anton({
   subsets: ['latin'],
   variable: '--font-display',
-  weight: ['500', '600', '700', '800'],
+  weight: '400',
   display: 'swap',
 });
 
-// Body: quiet, legible.
-const body = Inter({
+// Body/UI: an industrial grotesque with range.
+const body = Archivo({
   subsets: ['latin'],
   variable: '--font-body',
+  weight: ['400', '500', '600', '700'],
   display: 'swap',
 });
 
