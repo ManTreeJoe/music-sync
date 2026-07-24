@@ -7,6 +7,7 @@ import { redirectConnect, connectApple } from '@/lib/connectClient';
 import type { WriteTrackRef } from '@/lib/job/write';
 import type { WritePartial } from '@/lib/job/types';
 import { useJobStream } from '@/lib/useJobStream';
+import { ErrorState } from './ErrorState';
 
 interface WritablePlaylist {
   id: string;
@@ -33,7 +34,7 @@ export function WritePanel({
   const [selected, setSelected] = useState('');
   const [busy, setBusy] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ code?: string; message: string } | null>(null);
   const [resume, setResume] = useState<WritePartial | null>(null);
   // Stream the background write once it's kicked off.
   const stream = useJobStream(jobId);
@@ -78,7 +79,7 @@ export function WritePanel({
       await connectApple();
       await refreshStatus();
     } catch {
-      setError("Couldn't connect Apple Music.");
+      setError({ message: "Couldn't connect Apple Music." });
     } finally {
       setBusy(false);
     }
@@ -92,7 +93,7 @@ export function WritePanel({
     if (stream.record?.partial) {
       setResume(stream.record.partial);
     } else {
-      setError(stream.message);
+      setError({ code: stream.code, message: stream.message });
     }
   }, [stream]);
 
@@ -109,13 +110,13 @@ export function WritePanel({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.error?.message ?? 'Write failed.');
+        setError({ code: data?.error?.code, message: data?.error?.message ?? 'Write failed.' });
         return;
       }
       setResume(null);
       setJobId(data.jobId); // stream takes over from here
     } catch {
-      setError('Could not reach the server.');
+      setError({ message: 'Could not reach the server.' });
     } finally {
       setBusy(false);
     }
@@ -227,9 +228,13 @@ export function WritePanel({
           )}
 
           {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+            <ErrorState
+              code={error.code}
+              message={error.message}
+              platform={destination}
+              onRetry={write}
+              compact
+            />
           )}
 
           <button

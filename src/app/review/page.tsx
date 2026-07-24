@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { SiteHeader } from '@/components/SiteHeader';
 import { ReviewScreen } from '@/components/ReviewScreen';
 import { MatchProgress } from '@/components/MatchProgress';
+import { ErrorState } from '@/components/ErrorState';
 import { useJobStream } from '@/lib/useJobStream';
 import { buildSampleJob } from '@/lib/demo/sampleJob';
 
@@ -28,13 +29,7 @@ function StreamedReview({ jobId }: { jobId: string }) {
   if (state.phase === 'error') {
     return (
       <main className="review wrap">
-        <div className="matching">
-          <div className="matching-label mono">Couldn&apos;t finish</div>
-          <p className="matching-hint">{state.message}</p>
-          <a className="btn btn-primary" href="/">
-            ← Start over
-          </a>
-        </div>
+        <ErrorState code={state.code} message={state.message} />
       </main>
     );
   }

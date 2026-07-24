@@ -7,7 +7,7 @@ export type JobStreamState =
   | { phase: 'connecting'; progress: JobProgress }
   | { phase: 'running'; progress: JobProgress }
   | { phase: 'ready'; progress: JobProgress; record: JobRecord }
-  | { phase: 'error'; progress: JobProgress; message: string; record?: JobRecord };
+  | { phase: 'error'; progress: JobProgress; message: string; code?: string; record?: JobRecord };
 
 /**
  * Subscribe to a background job (match or write): stream progress over SSE,
@@ -31,7 +31,12 @@ export function useJobStream(jobId: string | null): JobStreamState {
         const data = (await res.json()) as JobRecord & { error?: { message?: string } };
         if (done) return;
         if (!res.ok) {
-          setState((s) => ({ phase: 'error', progress: s.progress, message: data?.error?.message ?? 'Job failed.' }));
+          setState((s) => ({
+            phase: 'error',
+            progress: s.progress,
+            message: data?.error?.message ?? 'Job failed.',
+            code: data?.error?.code,
+          }));
           return;
         }
         if (data.status === 'awaiting_review' || data.status === 'complete') {
@@ -41,6 +46,7 @@ export function useJobStream(jobId: string | null): JobStreamState {
             phase: 'error',
             progress: s.progress,
             message: data.error?.message ?? 'Job failed.',
+            code: data.error?.code,
             record: data, // carries `partial` for a resumable write
           }));
         }

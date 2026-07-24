@@ -172,6 +172,6 @@ export async function runWrite(input: WriteInput, deps: RunWriteDeps): Promise<W
       unmatched: input.unmatchedCount ?? 0,
     };
   } catch (e) {
-    throw toJobError(e);
+    throw toJobError(e, { write: true, platform: input.destination });
   }
 }

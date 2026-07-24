@@ -33,6 +33,11 @@ export async function executeWriteJob({ id, input, deps }: ExecuteWriteInput): P
       return;
     }
     const err = e instanceof JobError ? e : toJobError(e);
+    if (err.code === 'AUTH_EXPIRED') {
+      // The silent-failure canary: a user token expired mid-write. Worth a log
+      // line — a cluster of these means someone's connection quietly went stale.
+      console.warn(`[write ${id}] AUTH_EXPIRED — destination user token rejected`);
+    }
     await failJob(id, { code: err.code, message: err.message });
   }
 }
