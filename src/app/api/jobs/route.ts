@@ -16,6 +16,7 @@ import { resolveProviderForUrl } from '@/lib/providers';
 import { createJob, newJobId } from '@/lib/job/store';
 import { executeMatchJob } from '@/lib/job/execute';
 import { parseImportText } from '@/lib/providers/jsonFile';
+import { tryConsume, clientIp } from '@/lib/ratelimit';
 import { inngest, EVENTS } from '@/inngest/client';
 import { JobError } from '@/lib/job/types';
 import type { Auth, Platform } from '@/lib/providers/types';
@@ -32,6 +33,15 @@ const DESTINATIONS: Platform[] = ['spotify', 'apple', 'youtube'];
 const inngestEnabled = process.env.INNGEST_ENABLED === 'true';
 
 export async function POST(req: Request) {
+  // Each job kicks off network-heavy matching. Cap creation per IP.
+  const ip = await tryConsume(`jobs:${clientIp(req)}`, 30, 60_000);
+  if (!ip.ok) {
+    return NextResponse.json(
+      { error: { code: 'RATE_LIMITED', message: 'Too many requests. Wait a moment and try again.' } },
+      { status: 429, headers: { 'retry-after': String(ip.retryAfter) } },
+    );
+  }
+
   let body: { url?: unknown; json?: unknown; destination?: unknown };
   try {
     body = await req.json();

@@ -23,6 +23,8 @@ import { createJob, newJobId, getJob } from '@/lib/job/store';
 import { JobError, type JobErrorCode } from '@/lib/job/types';
 import { canAfford, charge } from '@/lib/quota';
 import { redis } from '@/lib/redis';
+import { tryConsume, clientIp } from '@/lib/ratelimit';
+import { isValidPlaylistId } from '@/lib/providers/playlistId';
 import type { Platform } from '@/lib/providers/types';
 
 export const runtime = 'nodejs';
@@ -56,6 +58,15 @@ export async function POST(req: Request) {
     unmatchedCount?: unknown;
     idempotencyKey?: unknown;
   };
+  // A write is expensive (creates playlists, hits platform quotas). Cap per IP.
+  const ip = await tryConsume(`write:${clientIp(req)}`, 15, 60_000);
+  if (!ip.ok) {
+    return NextResponse.json(
+      { error: { code: 'RATE_LIMITED', message: 'Too many writes. Wait a moment and try again.' } },
+      { status: 429, headers: { 'retry-after': String(ip.retryAfter) } },
+    );
+  }
+
   try {
     body = await req.json();
   } catch {
@@ -73,6 +84,17 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+  const dest = destination as Platform;
+
+  // Validate the append target before it's ever interpolated into an API URL.
+  const playlistId = typeof body.playlistId === 'string' ? body.playlistId : undefined;
+  if (mode === 'append' && (!playlistId || !isValidPlaylistId(dest, playlistId))) {
+    return NextResponse.json(
+      { error: { code: 'DEST_NOT_WRITABLE', message: 'That playlist id is missing or malformed.' } },
+      { status: 400 },
+    );
+  }
+
   const tracks = Array.isArray(body.tracks)
     ? (body.tracks.filter(
         (t) => t && typeof (t as WriteTrackRef).platformId === 'string',
@@ -84,8 +106,6 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-
-  const dest = destination as Platform;
   if (dest === 'youtube' && process.env.YOUTUBE_WRITE_ENABLED !== 'true') {
     return NextResponse.json(
       {
@@ -137,7 +157,7 @@ export async function POST(req: Request) {
       input: {
         destination: dest,
         mode,
-        playlistId: typeof body.playlistId === 'string' ? body.playlistId : undefined,
+        playlistId,
         name: typeof body.name === 'string' ? body.name : undefined,
         tracks,
         unmatchedCount: typeof body.unmatchedCount === 'number' ? body.unmatchedCount : 0,

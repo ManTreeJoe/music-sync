@@ -35,3 +35,32 @@ export async function acquire(platform: Platform): Promise<void> {
   }
   throw new Error(`Rate limit acquire timeout: ${platform}`);
 }
+
+/**
+ * Non-blocking sliding-window check for an arbitrary key (e.g. an IP on a public
+ * endpoint). Returns whether the request is allowed and, if not, roughly how
+ * many seconds until a slot frees. Unlike acquire(), it never waits.
+ */
+export async function tryConsume(
+  key: string,
+  max: number,
+  windowMs: number,
+): Promise<{ ok: boolean; retryAfter: number }> {
+  const now = Date.now();
+  const k = `rlip:${key}`;
+  await redis.zremrangebyscore(k, 0, now - windowMs);
+  const count = await redis.zcard(k);
+  if (count >= max) {
+    return { ok: false, retryAfter: Math.ceil(windowMs / 1000) };
+  }
+  await redis.zadd(k, `${now}:${Math.random()}`, now);
+  await redis.expire(k, Math.ceil(windowMs / 1000) + 1);
+  return { ok: true, retryAfter: 0 };
+}
+
+/** Best-effort client IP from proxy headers (Vercel sets x-forwarded-for). */
+export function clientIp(req: Request): string {
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) return xff.split(',')[0].trim();
+  return req.headers.get('x-real-ip')?.trim() || 'unknown';
+}
