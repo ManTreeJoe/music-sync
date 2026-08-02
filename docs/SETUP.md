@@ -14,8 +14,9 @@ offers **Spotify**, **Apple**, and **YouTube**. Connecting logs you in
 playlists can be read. This needs `SESSION_SECRET` set (any 32+ char string) so
 the login cookie can be encrypted. YouTube-connect also needs
 `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (an OAuth client, not just the API
-key), and its callback `http://localhost:3000/api/auth/google/callback`
-registered in Google Cloud Console.
+key), with its callback registered in Google Cloud Console — the production
+`https://YOUR-APP.vercel.app/api/auth/google/callback` and, for dev,
+`http://127.0.0.1:3000/api/auth/google/callback` (match the host you open).
 
 **Writing works too.** On the review screen, "Send to {destination}" creates a
 new playlist or appends to an existing one (deduping what's already there) and
@@ -38,10 +39,21 @@ Reading public playlists and searching needs only a **Client ID + Secret**
 
 1. Go to <https://developer.spotify.com/dashboard> and log in.
 2. **Create app**. Name/description can be anything.
-3. **Redirect URI** — add `http://localhost:3000/api/auth/spotify/callback`
-   (the dashboard requires at least one to save; it's used later for writes).
+3. **Redirect URIs** — Spotify requires **HTTPS**, and the only `http://` it
+   still accepts is the **loopback IP** (not the word `localhost`). Add both:
+   - `https://YOUR-APP.vercel.app/api/auth/spotify/callback` (production)
+   - `http://127.0.0.1:3000/api/auth/spotify/callback` (local dev)
+
+   Common rejections (Spotify shows "not secure" / "invalid redirect URI"):
+   - `http://YOUR-APP.vercel.app/...` — http on a hosted domain is refused; use `https://`.
+   - `http://localhost:3000/...` — the hostname `localhost` is no longer accepted; use `127.0.0.1`.
 4. Under "APIs used", tick **Web API**. Save.
 5. Open the app → **Settings** → copy **Client ID**, and **View client secret**.
+
+> **Match it when running locally:** open the app at `http://127.0.0.1:3000`
+> (not `localhost`) — the callback URL is derived from the host you're on and
+> must match the dashboard exactly. On Vercel, optionally pin it with an env var
+> `SPOTIFY_REDIRECT_URI=https://YOUR-APP.vercel.app/api/auth/spotify/callback`.
 
 ```bash
 SPOTIFY_CLIENT_ID=your_client_id
@@ -110,13 +122,17 @@ YOUTUBE_API_KEY=your_api_key
 ```bash
 cp .env.example .env.local     # then fill in the values above
 npm install
-npm run dev                    # http://localhost:3000
+npm run dev                    # then open http://127.0.0.1:3000
 ```
 
-Set `SESSION_SECRET` to any 32+ character string — it encrypts the login cookie
-used by "Connect Spotify" (private playlists). Also register the callback URL
-`http://localhost:3000/api/auth/spotify/callback` in the Spotify dashboard (you
-already added it above).
+Open the dev app at **`http://127.0.0.1:3000`** (not `localhost`) — Spotify's
+redirect rules reject the `localhost` hostname, and the callback is derived from
+the host you're on, so it must match the `http://127.0.0.1:3000/api/auth/spotify/callback`
+you registered in the dashboard.
+
+Set `SESSION_SECRET` to a random 32+ character string — it encrypts the login
+cookie used by "Connect Spotify" (private playlists). In production it's
+**required** (the app refuses to run without it).
 
 Not needed yet (leave blank): `UPSTASH_REDIS_REST_*`, `GOOGLE_CLIENT_*` — those
 come online with caching and YouTube writes.
